@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- 1. Thêm quyền Internet để tải video mẫu -->
+    <!-- Cấp quyền truy cập Internet để tải dữ liệu danh sách phim, hình ảnh thumbnail và phát video trực tuyến -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
@@ -13,27 +13,25 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.PipDemo">
+        android:theme="@style/Theme.PGCK2">
 
-        <!-- 2. Thêm supportsPictureInPicture và configChanges cho MainActivity -->
+        <!-- Màn hình chính chứa danh sách video -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:supportsPictureInPicture="true"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- 3. Khai báo thêm PlayerActivity để phát video -->
+        <!-- Màn hình phát video ExoPlayer -->
         <activity
             android:name=".PlayerActivity"
             android:exported="false"
-            android:supportsPictureInPicture="true"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation" />
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout" />
 
     </application>
 

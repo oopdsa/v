@@ -22,5 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PipDemo"
+rootProject.name = "PGCK 2"
 include(":app")
+ 

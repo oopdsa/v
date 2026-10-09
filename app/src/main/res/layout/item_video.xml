@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginVertical="8dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="4dp"
+    app:strokeWidth="0dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- ImageView hiển thị ảnh bìa (thumbnail) của video -->
+        <ImageView
+            android:id="@+id/imgThumbnail"
+            android:layout_width="0dp"
+            android:layout_height="200dp"
+            android:contentDescription="Video Thumbnail"
+            android:scaleType="centerCrop"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:src="@tools:sample/backgrounds/scenic" />
+
+        <!-- Lớp phủ mờ đè phần dưới ảnh giúp chữ dễ đọc hơn -->
+        <View
+            android:id="@+id/vOverlay"
+            android:layout_width="0dp"
+            android:layout_height="60dp"
+            android:background="#80000000"
+            app:layout_constraintBottom_toBottomOf="@id/imgThumbnail"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <!-- TextView hiển thị tên phim / tiêu đề video -->
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:padding="12dp"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:maxLines="2"
+            android:ellipsize="end"
+            app:layout_constraintBottom_toBottomOf="@id/imgThumbnail"
+            app:layout_constraintEnd_toStartOf="@id/layoutAdminActions"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:text="Tên phim mẫu 1" />
+
+        <!-- Khung chứa nút Sửa / Xóa cho Chế độ Admin (Admin Mode) -->
+        <LinearLayout
+            android:id="@+id/layoutAdminActions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingEnd="8dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/imgThumbnail"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/vOverlay"
+            tools:visibility="visible">
+
+            <!-- Nút Sửa video (Edit) -->
+            <ImageButton
+                android:id="@+id/btnEditVideo"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Sửa Video"
+                android:padding="8dp"
+                android:src="@drawable/ic_edit"
+                app:tint="@android:color/white" />
+
+            <!-- Nút Xóa video (Delete) -->
+            <ImageButton
+                android:id="@+id/btnDeleteVideo"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Xóa Video"
+                android:padding="8dp"
+                android:src="@drawable/ic_delete"
+                app:tint="#FF5252" />
+
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView>

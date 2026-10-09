@@ -3,14 +3,14 @@ plugins {
 }
 
 android {
-    namespace = "com.example.pipdemo"
+    namespace = "com.example.pgck2"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.example.pipdemo"
-        minSdk = 26
+        applicationId = "com.example.pgck2"
+        minSdk = 24
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"
@@ -36,19 +36,15 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.constraintlayout)
     implementation(libs.material)
+
+    // Media3 ExoPlayer & UI
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+
+    // Glide for image loading
+    implementation(libs.glide)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.ext.junit)
-    implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.2.0")
-
-    // Media3 ExoPlayer
-    val media3Version = "1.5.1"
-    implementation("androidx.media3:media3-exoplayer:$media3Version")
-    implementation("androidx.media3:media3-ui:$media3Version")
-    implementation("androidx.media3:media3-exoplayer-hls:$media3Version")
-
-    // Thư viện tải ảnh Glide
-    implementation("com.github.bumptech.glide:glide:4.16.0")
 }
