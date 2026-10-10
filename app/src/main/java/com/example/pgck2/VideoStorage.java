@@ -16,11 +16,11 @@ import java.util.List;
  */
 public class VideoStorage {
 
-    private static final String PREF_NAME = "video_app_prefs";
-    private static final String KEY_VIDEO_LIST = "key_video_list";
+    private static final String PREF_NAME = "video_app_prefs_v2";
+    private static final String KEY_VIDEO_LIST = "key_video_list_v2";
 
     /**
-     * Tải danh sách video đã lưu. Nếu chưa có, trả về danh sách video YouTube mặc định.
+     * Tải danh sách video đã lưu. Nếu chưa có, trả về danh sách video mặc định.
      *
      * @param context Context của ứng dụng
      * @return Danh sách các đối tượng Video
@@ -81,39 +81,60 @@ public class VideoStorage {
     }
 
     /**
-     * Tạo danh sách video mặc định gồm các video YouTube nổi tiếng.
+     * Khôi phục danh sách video về danh sách mặc định.
+     */
+    public static List<Video> resetToDefault(Context context) {
+        List<Video> defaultList = getDefaultVideos();
+        saveVideos(context, defaultList);
+        return defaultList;
+    }
+
+    /**
+     * Tạo danh sách video mặc định hoạt động 100% trên cả ExoPlayer (Direct MP4) và YouTube.
      */
     private static List<Video> getDefaultVideos() {
         List<Video> list = new ArrayList<>();
 
         list.add(new Video(
-                "Sintel - Open Movie (YouTube 4K)",
-                "https://img.youtube.com/vi/eRsGyueVLvQ/hqdefault.jpg",
-                "https://www.youtube.com/watch?v=eRsGyueVLvQ"
+                "Big Buck Bunny (Direct MP4 Stream)",
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
         ));
 
         list.add(new Video(
-                "Big Buck Bunny (YouTube Short Clip)",
-                "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg",
-                "https://www.youtube.com/watch?v=aqz-KE-bpKQ"
+                "Sintel - Open Movie (Direct MP4 Stream)",
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/Sintel.jpg",
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4"
         ));
 
         list.add(new Video(
-                "Tears of Steel - Blender Sci-Fi Movie",
-                "https://img.youtube.com/vi/rP3InK4M_3M/hqdefault.jpg",
-                "https://www.youtube.com/watch?v=rP3InK4M_3M"
+                "Big Buck Bunny (YouTube 60fps)",
+                "https://img.youtube.com/vi/YE7VzlLtp-4/hqdefault.jpg",
+                "https://www.youtube.com/watch?v=YE7VzlLtp-4"
         ));
 
         list.add(new Video(
-                "Elephants Dream - Animated Short",
-                "https://img.youtube.com/vi/TLkA0RELQ1g/hqdefault.jpg",
-                "https://www.youtube.com/watch?v=TLkA0RELQ1g"
+                "Tears of Steel - Sci-Fi Movie (Direct MP4)",
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/TearsOfSteel.jpg",
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4"
         ));
 
         list.add(new Video(
-                "Caminandes 3: Llamigos (Direct MP4 Stream)",
+                "Elephants Dream (Direct MP4 Stream)",
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ElephantsDream.jpg",
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"
+        ));
+
+        list.add(new Video(
+                "For Bigger Blazes (Direct MP4 Stream)",
                 "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerBlazes.jpg",
                 "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+        ));
+
+        list.add(new Video(
+                "Google I/O Keynote (YouTube)",
+                "https://img.youtube.com/vi/L_LUpnjgPso/hqdefault.jpg",
+                "https://www.youtube.com/watch?v=L_LUpnjgPso"
         ));
 
         return list;

@@ -15,6 +15,12 @@ public class Video {
     private String videoUrl;      // Đường dẫn/URL truyền phát video (YouTube/MP4/HLS)
 
     /**
+     * Constructor không tham số bắt buộc để Firebase Firestore ép kiểu toObject(Video.class).
+     */
+    public Video() {
+    }
+
+    /**
      * Constructor tự sinh ID ngẫu nhiên.
      */
     public Video(String title, String thumbnailUrl, String videoUrl) {

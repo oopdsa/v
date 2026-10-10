@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
@@ -22,15 +23,19 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * MainActivity hiển thị danh sách video, hỗ trợ Tìm Kiếm, Chế độ Admin (Thêm/Sửa/Xóa video)
- * và lưu trữ dữ liệu bền vững qua SharedPreferences.
+ * Dữ liệu đồng bộ trực tiếp với FIREBASE CLOUD FIRESTORE và tự động fallback về Local Storage khi ngoại tuyến.
  */
 public class MainActivity extends AppCompatActivity {
+
+    private static final String TAG = "FIREBASE_TEST";
 
     private RecyclerView rvVideos;
     private VideoAdapter videoAdapter;
@@ -45,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
     private FloatingActionButton fabAddVideo;
 
     private boolean isAdminMode = false;
+    private FirebaseFirestore db; // Đối tượng Firestore
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,17 +65,20 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        // Ánh xạ các thành phần View
         initViews();
 
-        // Nạp danh sách video từ Storage
-        fullVideoList = VideoStorage.loadVideos(this);
-        currentFilteredList = new ArrayList<>(fullVideoList);
+        // 1. Khởi tạo danh sách rỗng ban đầu để Adapter không bị lỗi null
+        fullVideoList = new ArrayList<>();
+        currentFilteredList = new ArrayList<>();
 
-        // Khởi tạo VideoAdapter với 3 listener (Click xem, Admin Sửa, Admin Xóa)
+        // 2. Cài đặt Adapter trước
         setupAdapter();
 
-        // Cài đặt các sự kiện Tìm Kiếm và Chế độ Admin
+        // 3. Khởi tạo Firestore và nạp dữ liệu
+        db = FirebaseFirestore.getInstance();
+        loadVideosFromFirebase();
+
+        // 4. Cài đặt các sự kiện nút bấm
         setupSearchAndAdminEvents();
     }
 
@@ -86,36 +95,69 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
+     * Tải danh sách phim trực tiếp từ bộ sưu tập "videos" trên Firebase Firestore.
+     * Tự động fallback về dữ liệu Local nếu Firestore trống hoặc lỗi mạng.
+     */
+    private void loadVideosFromFirebase() {
+        db.collection("videos").get().addOnCompleteListener(task -> {
+            if (task.isSuccessful() && task.getResult() != null && !task.getResult().isEmpty()) {
+                fullVideoList.clear();
+
+                for (QueryDocumentSnapshot document : task.getResult()) {
+                    Video video = document.toObject(Video.class);
+
+                    if (video.getId() == null || video.getId().isEmpty()) {
+                        video.setId(document.getId());
+                    }
+
+                    fullVideoList.add(video);
+                    Log.d(TAG, "Đã nạp thành công từ Firebase: " + video.getTitle());
+                }
+
+                currentFilteredList.clear();
+                currentFilteredList.addAll(fullVideoList);
+                videoAdapter.updateVideoList(currentFilteredList);
+
+                Toast.makeText(MainActivity.this, "Đã tải " + fullVideoList.size() + " video từ Firebase Firestore", Toast.LENGTH_SHORT).show();
+
+            } else {
+                Log.w(TAG, "Firebase Firestore chưa có dữ liệu hoặc lỗi mạng. Đang chuyển sang dữ liệu dự phòng...");
+                loadLocalFallbackVideos();
+            }
+        });
+    }
+
+    /**
+     * Tải dữ liệu dự phòng từ Local Storage (SharedPreferences).
+     */
+    private void loadLocalFallbackVideos() {
+        fullVideoList = VideoStorage.loadVideos(this);
+        currentFilteredList.clear();
+        currentFilteredList.addAll(fullVideoList);
+        videoAdapter.updateVideoList(currentFilteredList);
+    }
+
+    /**
      * Khởi tạo Adapter và xử lý 3 hành động: Phát phim, Sửa video (Admin), Xóa video (Admin).
      */
     private void setupAdapter() {
         videoAdapter = new VideoAdapter(
                 this, currentFilteredList,
                 video -> {
-                    // 1. Hành động CLICK XEM VIDEO -> Mở PlayerActivity
+                    // 1. CLICK XEM VIDEO -> Mở PlayerActivity
                     Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
                     intent.putExtra(PlayerActivity.EXTRA_VIDEO_URL, video.getVideoUrl());
                     intent.putExtra(PlayerActivity.EXTRA_VIDEO_TITLE, video.getTitle());
                     startActivity(intent);
                 },
-                (video, position) -> {
-                    // 2. Hành động SỬA VIDEO (Admin Mode)
-                    showAddEditVideoDialog(video);
-                },
-                (video, position) -> {
-                    // 3. Hành động XÓA VIDEO (Admin Mode)
-                    confirmDeleteVideo(video);
-                }
+                (video, position) -> showAddEditVideoDialog(video),
+                (video, position) -> confirmDeleteVideo(video)
         );
 
         rvVideos.setAdapter(videoAdapter);
     }
 
-    /**
-     * Thiết lập sự kiện Bật/Tắt tìm kiếm, Tìm kiếm thời gian thực và Bật/Tắt Chế độ Admin.
-     */
     private void setupSearchAndAdminEvents() {
-        // Nút Bật/Tắt Thanh Tìm Kiếm
         btnToggleSearch.setOnClickListener(v -> {
             if (cardSearch.getVisibility() == View.VISIBLE) {
                 cardSearch.setVisibility(View.GONE);
@@ -126,7 +168,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Lắng nghe sự kiện gõ phím tìm kiếm thời gian thực
         etSearchQuery.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -140,30 +181,24 @@ public class MainActivity extends AppCompatActivity {
             public void afterTextChanged(Editable s) {}
         });
 
-        // Nút Xóa từ khóa tìm kiếm
         btnClearSearch.setOnClickListener(v -> etSearchQuery.setText(""));
 
-        // Nút Bật/Tắt Chế độ Admin
         btnToggleAdmin.setOnClickListener(v -> {
             isAdminMode = !isAdminMode;
             videoAdapter.setAdminMode(isAdminMode);
 
             if (isAdminMode) {
                 fabAddVideo.setVisibility(View.VISIBLE);
-                Toast.makeText(this, "Đã BẬT Chế độ Admin (Cho phép Thêm / Sửa / Xóa)", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Đã BẬT Chế độ Admin (Đồng bộ Firebase & Local)", Toast.LENGTH_SHORT).show();
             } else {
                 fabAddVideo.setVisibility(View.GONE);
                 Toast.makeText(this, "Đã TẮT Chế độ Admin", Toast.LENGTH_SHORT).show();
             }
         });
 
-        // Nút Thêm Video Mới (FAB)
         fabAddVideo.setOnClickListener(v -> showAddEditVideoDialog(null));
     }
 
-    /**
-     * Lọc danh sách video theo từ khóa tìm kiếm.
-     */
     private void filterVideoList(String query) {
         currentFilteredList.clear();
         if (query == null || query.trim().isEmpty()) {
@@ -180,9 +215,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Hiển thị Dialog cho phép Admin Thêm video mới hoặc Sửa video có sẵn.
-     *
-     * @param videoToEdit null nếu là THÊM MỚI, có đối tượng nếu là SỬA
+     * Hiển thị Dialog Thêm/Sửa video và đồng bộ lên Firebase Cloud Firestore + Local Storage.
      */
     private void showAddEditVideoDialog(Video videoToEdit) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -201,7 +234,7 @@ public class MainActivity extends AppCompatActivity {
             etVideoUrl.setText(videoToEdit.getVideoUrl());
             etThumbnailUrl.setText(videoToEdit.getThumbnailUrl());
         } else {
-            tvDialogTitle.setText("Thêm Video Mới (Admin)");
+            tvDialogTitle.setText("Thêm Video Mới (Firebase & Local)");
         }
 
         builder.setPositiveButton(isEditMode ? "Cập Nhật" : "Thêm Mới", (dialog, which) -> {
@@ -214,20 +247,25 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
+            Video videoTarget;
             if (isEditMode) {
                 videoToEdit.setTitle(title);
                 videoToEdit.setVideoUrl(videoUrl);
                 videoToEdit.setThumbnailUrl(thumbnailUrl);
-                Toast.makeText(this, "Đã cập nhật video!", Toast.LENGTH_SHORT).show();
+                videoTarget = videoToEdit;
             } else {
-                Video newVideo = new Video(title, thumbnailUrl, videoUrl);
-                fullVideoList.add(0, newVideo);
-                Toast.makeText(this, "Đã thêm video mới!", Toast.LENGTH_SHORT).show();
+                videoTarget = new Video(title, thumbnailUrl, videoUrl);
+                fullVideoList.add(0, videoTarget);
             }
 
-            // Lưu dữ liệu vĩnh viễn và cập nhật giao diện
+            // 1. Lưu vĩnh viễn vào Local Storage
             VideoStorage.saveVideos(this, fullVideoList);
             filterVideoList(etSearchQuery.getText().toString());
+
+            // 2. Đồng bộ trực tiếp lên Firebase Firestore
+            db.collection("videos").document(videoTarget.getId()).set(videoTarget)
+                    .addOnSuccessListener(aVoid -> Toast.makeText(this, "Đã đồng bộ lên Firebase!", Toast.LENGTH_SHORT).show())
+                    .addOnFailureListener(e -> Log.e(TAG, "Lỗi đồng bộ Firebase", e));
         });
 
         builder.setNegativeButton("Hủy", (dialog, which) -> dialog.dismiss());
@@ -235,7 +273,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Hiển thị Dialog xác nhận xóa video.
+     * Xác nhận Xóa video khỏi Firebase Cloud Firestore và Local Storage.
      */
     private void confirmDeleteVideo(Video video) {
         new AlertDialog.Builder(this)
@@ -245,7 +283,11 @@ public class MainActivity extends AppCompatActivity {
                     fullVideoList.remove(video);
                     VideoStorage.saveVideos(this, fullVideoList);
                     filterVideoList(etSearchQuery.getText().toString());
-                    Toast.makeText(this, "Đã xóa video thành công!", Toast.LENGTH_SHORT).show();
+
+                    // Xóa dữ liệu khỏi Firebase Firestore
+                    db.collection("videos").document(video.getId()).delete()
+                            .addOnSuccessListener(aVoid -> Toast.makeText(this, "Đã xóa khỏi Firebase!", Toast.LENGTH_SHORT).show())
+                            .addOnFailureListener(e -> Log.e(TAG, "Lỗi xóa trên Firebase", e));
                 })
                 .setNegativeButton("Hủy", null)
                 .show();
