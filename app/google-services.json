@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1069449139937",
+    "project_id": "videoapp-7b327",
+    "storage_bucket": "videoapp-7b327.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1069449139937:android:23e3b5cbb04a3a7758c9a0",
+        "android_client_info": {
+          "package_name": "com.example.pgck2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuGupQL-ESYcdRVWA-5t4PL4xpaNt8jYI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1069449139937:android:23e3b5cbb04a3a7758c9a0",
+        "android_client_info": {
+          "package_name": "gck2.team.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuGupQL-ESYcdRVWA-5t4PL4xpaNt8jYI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
