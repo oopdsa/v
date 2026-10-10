@@ -4,10 +4,10 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.ParcelFileDescriptor;
 
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
 
@@ -19,12 +19,12 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okio.BufferedSink;
 
 public class CloudinaryUploader {
 
-    // THAY 2 THÔNG SỐ CỦA BẠN VÀO ĐÂY:
-    private static final String CLOUD_NAME = "THAY_CLOUD_NAME_CUA_BAN_VAO_DAY";
-    private static final String UPLOAD_PRESET = "THAY_UPLOAD_PRESET_CUA_BAN_VAO_DAY";
+    private static final String CLOUD_NAME = "eqmwglmm"; // Thay bằng cloud name của bạn
+    private static final String UPLOAD_PRESET = "android_video_preset"; // Thay bằng upload preset của bạn
 
     private static final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(60, TimeUnit.SECONDS)
@@ -35,47 +35,60 @@ public class CloudinaryUploader {
     public interface UploadCallback {
         void onSuccess(String secureUrl);
         void onError(String errorMessage);
+        // Tùy chọn: Thêm callback để hiển thị progress bar
+        // void onProgress(int percent);
     }
 
-    /**
-     * Upload file (video MP4 hoặc ảnh) lên Cloudinary
-     * @param context Context để đọc Uri
-     * @param fileUri Uri được chọn từ thư viện máy
-     * @param isVideo true nếu là video, false nếu là ảnh
-     * @param callback Nhận kết quả URL trả về
-     */
     public static void uploadMedia(Context context, Uri fileUri, boolean isVideo, UploadCallback callback) {
         Handler mainHandler = new Handler(Looper.getMainLooper());
 
         new Thread(() -> {
             try {
-                // 1. Đọc dữ liệu từ Uri
-                InputStream inputStream = context.getContentResolver().openInputStream(fileUri);
-                if (inputStream == null) {
-                    mainHandler.post(() -> callback.onError("Không thể đọc tệp tin!"));
+                // 1. Lấy kích thước file và InputStream mà KHÔNG đọc vào RAM
+                ParcelFileDescriptor pfd = context.getContentResolver().openFileDescriptor(fileUri, "r");
+                if (pfd == null) {
+                    mainHandler.post(() -> callback.onError("Không thể mở tệp tin!"));
                     return;
                 }
+                long fileSize = pfd.getStatSize();
+                InputStream inputStream = new java.io.FileInputStream(pfd.getFileDescriptor());
 
-                ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
-                byte[] buffer = new byte[4096];
-                int len;
-                while ((len = inputStream.read(buffer)) != -1) {
-                    byteBuffer.write(buffer, 0, len);
-                }
-                byte[] fileBytes = byteBuffer.toByteArray();
-                inputStream.close();
-
-                // 2. Xác định endpoint (video hoặc image)
+                // 2. Xác định endpoint và mimeType
                 String resourceType = isVideo ? "video" : "image";
                 String uploadUrl = "https://api.cloudinary.com/v1_1/" + CLOUD_NAME + "/" + resourceType + "/upload";
                 String mimeType = isVideo ? "video/mp4" : "image/jpeg";
+                MediaType mediaType = MediaType.parse(mimeType);
 
-                // 3. Đóng gói Multipart Form Body
+                // 3. Tạo RequestBody streaming trực tiếp từ InputStream
+                RequestBody fileRequestBody = new RequestBody() {
+                    @Override
+                    public MediaType contentType() {
+                        return mediaType;
+                    }
+
+                    @Override
+                    public long contentLength() {
+                        return fileSize; // Giúp OkHttp tối ưu hóa việc gửi dữ liệu
+                    }
+
+                    @Override
+                    public void writeTo(BufferedSink sink) throws java.io.IOException {
+                        byte[] buffer = new byte[8192]; // Đọc theo từng chunk 8KB
+                        int read;
+                        while ((read = inputStream.read(buffer)) != -1) {
+                            sink.write(buffer, 0, read);
+                            // Ở đây bạn có thể tính toán % để gọi callback.onProgress() nếu muốn
+                        }
+                        inputStream.close();
+                        pfd.close();
+                    }
+                };
+
+                // 4. Đóng gói Multipart Form Body
                 RequestBody requestBody = new MultipartBody.Builder()
                         .setType(MultipartBody.FORM)
                         .addFormDataPart("upload_preset", UPLOAD_PRESET)
-                        .addFormDataPart("file", "upload_" + System.currentTimeMillis(),
-                                RequestBody.create(fileBytes, MediaType.parse(mimeType)))
+                        .addFormDataPart("file", "upload_" + System.currentTimeMillis() + (isVideo ? ".mp4" : ".jpg"), fileRequestBody)
                         .build();
 
                 Request request = new Request.Builder()
@@ -83,7 +96,7 @@ public class CloudinaryUploader {
                         .post(requestBody)
                         .build();
 
-                // 4. Thực thi gửi request
+                // 5. Thực thi gửi request
                 client.newCall(request).enqueue(new Callback() {
                     @Override
                     public void onFailure(Call call, java.io.IOException e) {
@@ -91,18 +104,18 @@ public class CloudinaryUploader {
                     }
 
                     @Override
-                    public void onResponse(Call call, Response response) throws java.io.IOException {
-                        String responseData = response.body() != null ? response.body().string() : "";
-                        if (response.isSuccessful()) {
-                            try {
+                    public void onResponse(Call call, Response response) {
+                        try {
+                            String responseData = response.body() != null ? response.body().string() : "";
+                            if (response.isSuccessful()) {
                                 JSONObject jsonObject = new JSONObject(responseData);
                                 String secureUrl = jsonObject.getString("secure_url");
                                 mainHandler.post(() -> callback.onSuccess(secureUrl));
-                            } catch (Exception e) {
-                                mainHandler.post(() -> callback.onError("Lỗi phân tích JSON từ server!"));
+                            } else {
+                                mainHandler.post(() -> callback.onError("Server trả về lỗi: " + responseData));
                             }
-                        } else {
-                            mainHandler.post(() -> callback.onError("Server trả về lỗi: " + responseData));
+                        } catch (Exception e) {
+                            mainHandler.post(() -> callback.onError("Lỗi phân tích JSON: " + e.getMessage()));
                         }
                     }
                 });
