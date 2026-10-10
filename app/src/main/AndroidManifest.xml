@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Cấp quyền truy cập Internet để tải dữ liệu danh sách phim, hình ảnh thumbnail và phát video trực tuyến -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
@@ -24,15 +23,15 @@
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- Màn hình phát video ExoPlayer -->
+        <!-- Màn hình phát video ExoPlayer ĐÃ GỘP CHUẨN CHO PiP -->
         <activity
             android:name=".PlayerActivity"
             android:exported="false"
+            android:supportsPictureInPicture="true"
             android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout" />
 
     </application>
