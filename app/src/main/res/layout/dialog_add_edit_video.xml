@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -30,11 +31,27 @@
 
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- Đường dẫn Video (YouTube / MP4) -->
+    <!-- Ô nhập Mô tả video -->
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"
+        android:hint="Mô tả video">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etDialogDescription"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textMultiLine"
+            android:lines="3" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Đường dẫn Video (YouTube / MP4) -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
         android:hint="URL Video (YouTube hoặc MP4)">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -45,11 +62,23 @@
 
     </com.google.android.material.textfield.TextInputLayout>
 
+    <!-- Nút Chọn & Upload Video từ thiết bị lên Cloudinary -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnPickVideo"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:text="📁 Chọn &amp; Upload Video từ máy"
+        android:textColor="@color/design_default_color_primary"
+        app:icon="@drawable/ic_add"
+        app:iconTint="@color/design_default_color_primary" />
+
     <!-- Đường dẫn Ảnh Bìa (Tùy chọn) -->
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="8dp"
         android:hint="URL Ảnh Bìa / Thumbnail (Tùy chọn)">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -59,5 +88,17 @@
             android:inputType="textUri" />
 
     </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Nút Chọn & Upload Ảnh Bìa từ thiết bị lên Cloudinary -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnPickImage"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:text="🖼️ Chọn &amp; Upload Ảnh từ máy"
+        android:textColor="@color/design_default_color_primary"
+        app:icon="@drawable/ic_add"
+        app:iconTint="@color/design_default_color_primary" />
 
 </LinearLayout>

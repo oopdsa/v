@@ -6,11 +6,12 @@ import java.util.regex.Pattern;
 
 /**
  * Model class đại diện cho một video/bộ phim trong danh sách.
- * Hỗ trợ nhận diện tự động ID và ảnh thumbnail của video YouTube.
+ * Hỗ trợ nhận diện tự động ID, mô tả (description) và ảnh thumbnail của video YouTube.
  */
 public class Video {
     private String id;            // Mã định danh duy nhất của video
     private String title;         // Tên phim / Tiêu đề video
+    private String description;   // Mô tả nội dung video
     private String thumbnailUrl;  // Đường dẫn/URL ảnh bìa (thumbnail)
     private String videoUrl;      // Đường dẫn/URL truyền phát video (YouTube/MP4/HLS)
 
@@ -24,15 +25,23 @@ public class Video {
      * Constructor tự sinh ID ngẫu nhiên.
      */
     public Video(String title, String thumbnailUrl, String videoUrl) {
-        this(UUID.randomUUID().toString(), title, thumbnailUrl, videoUrl);
+        this(UUID.randomUUID().toString(), title, "", thumbnailUrl, videoUrl);
+    }
+
+    /**
+     * Constructor có mô tả ngắn.
+     */
+    public Video(String title, String description, String thumbnailUrl, String videoUrl) {
+        this(UUID.randomUUID().toString(), title, description, thumbnailUrl, videoUrl);
     }
 
     /**
      * Constructor đầy đủ tham số.
      */
-    public Video(String id, String title, String thumbnailUrl, String videoUrl) {
+    public Video(String id, String title, String description, String thumbnailUrl, String videoUrl) {
         this.id = id != null ? id : UUID.randomUUID().toString();
         this.title = title;
+        this.description = description != null ? description : "";
         this.videoUrl = videoUrl;
         // Nếu thumbnailUrl trống và videoUrl là link YouTube -> tự sinh link thumbnail YouTube
         if ((thumbnailUrl == null || thumbnailUrl.trim().isEmpty()) && isYouTubeVideo()) {
@@ -61,6 +70,14 @@ public class Video {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public String getThumbnailUrl() {

@@ -66,10 +66,9 @@ import androidx.media3.ui.PlayerView;
 /**
  * Activity phát video trực tuyến hỗ trợ:
  * 1. Nút Thoát video (Close button)
- * 2. Nút Tua Lùi 10 Giây (-10s)
- * 3. Nút Tua Tới 10 Giây (+10s)
- * 4. Nút Chỉnh Độ Phân Giải (Resolution Selector: 1080p, 720p, 480p, 360p, Auto)
- * 5. Trình phát kép: ExoPlayer (MP4/HLS) & WebView (YouTube Video)
+ * 2. Nút Tua Lùi 10 Giây (-10s) & Tua Tới 10 Giây (+10s) đồng bộ ẩn/hiện theo chạm màn hình
+ * 3. Nút Chỉnh Độ Phân Giải (Resolution Selector: 1080p, 720p, 480p, 360p, Auto)
+ * 4. Trình phát kép: ExoPlayer (MP4/HLS) & WebView (YouTube Video)
  */
 public class PlayerActivity extends AppCompatActivity {
 
@@ -78,6 +77,8 @@ public class PlayerActivity extends AppCompatActivity {
 
     private PlayerView playerView;
     private WebView wvYouTubePlayer;
+    private View layoutSeekControls;
+    private View layoutTopBar;
     private ImageButton btnExitPlayer;
     private ImageButton btnQuality;
     private ImageButton btnRewind10;
@@ -119,11 +120,16 @@ public class PlayerActivity extends AppCompatActivity {
     private void initViews() {
         playerView = findViewById(R.id.playerView);
         wvYouTubePlayer = findViewById(R.id.wvYouTubePlayer);
+        layoutSeekControls = findViewById(R.id.layoutSeekControls);
+        layoutTopBar = findViewById(R.id.layoutTopBar);
         btnExitPlayer = findViewById(R.id.btnExitPlayer);
         btnQuality = findViewById(R.id.btnQuality);
         btnRewind10 = findViewById(R.id.btnRewind10);
         btnForward10 = findViewById(R.id.btnForward10);
         tvPlayerVideoTitle = findViewById(R.id.tvPlayerVideoTitle);
+
+        // Mặc định ẩn khung nút tua 10s cho tới khi chạm màn hình
+        layoutSeekControls.setVisibility(View.GONE);
     }
 
     /**
@@ -141,6 +147,17 @@ public class PlayerActivity extends AppCompatActivity {
 
         // NÚT CHỈNH ĐỘ PHÂN GIẢI -> Hiển thị Dialog chọn chất lượng
         btnQuality.setOnClickListener(v -> showResolutionDialog());
+
+        // LẮNG NGHE SỰ KIỆN ẨN/HIỆN THANH ĐIỀU KHIỂN CỦA PLAYERVIEW
+        // Đồng bộ khung 2 nút tua (-10s / +10s) ẩn hiện theo thao tác chạm màn hình
+        playerView.setControllerVisibilityListener((PlayerView.ControllerVisibilityListener) visibility -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode()) {
+                return;
+            }
+            if (layoutSeekControls != null) {
+                layoutSeekControls.setVisibility(visibility);
+            }
+        });
     }
 
     /**
@@ -253,6 +270,10 @@ public class PlayerActivity extends AppCompatActivity {
         playerView.setVisibility(View.GONE);
         wvYouTubePlayer.setVisibility(View.VISIBLE);
 
+        // Khi mở video YouTube: Tạm hiện 2 nút tua 10s rồi tự động ẩn sau 3.5 giây
+        layoutSeekControls.setVisibility(View.VISIBLE);
+        layoutSeekControls.postDelayed(() -> layoutSeekControls.setVisibility(View.GONE), 3500);
+
         WebSettings webSettings = wvYouTubePlayer.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
@@ -299,7 +320,6 @@ public class PlayerActivity extends AppCompatActivity {
             player = new ExoPlayer.Builder(this).build();
             playerView.setPlayer(player);
 
-            // Bắt sự kiện lỗi khi nguồn video không hỗ trợ hoặc link lỗi
             player.addListener(new Player.Listener() {
                 @Override
                 public void onPlayerError(@NonNull PlaybackException error) {

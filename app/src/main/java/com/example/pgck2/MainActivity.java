@@ -1,5 +1,6 @@
 package com.example.pgck2;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
@@ -7,12 +8,15 @@ import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
@@ -31,7 +35,8 @@ import java.util.List;
 
 /**
  * MainActivity hiển thị danh sách video, hỗ trợ Tìm Kiếm, Chế độ Admin (Thêm/Sửa/Xóa video)
- * Dữ liệu đồng bộ trực tiếp với FIREBASE CLOUD FIRESTORE và tự động fallback về Local Storage khi ngoại tuyến.
+ * Dữ liệu đồng bộ trực tiếp với FIREBASE CLOUD FIRESTORE
+ * và tích hợp Upload Video/Ảnh Bìa lên Đám mây qua CloudinaryUploader.
  */
 public class MainActivity extends AppCompatActivity {
 
@@ -52,6 +57,14 @@ public class MainActivity extends AppCompatActivity {
     private boolean isAdminMode = false;
     private FirebaseFirestore db; // Đối tượng Firestore
 
+    // Launchers chọn Video và Ảnh
+    private ActivityResultLauncher<String> videoPickerLauncher;
+    private ActivityResultLauncher<String> imagePickerLauncher;
+    private ProgressDialog progressDialog; // Tiến trình hiển thị khi đang upload
+
+    private EditText currentEtVideoUrl;    // Giữ tham chiếu ô nhập URL Video
+    private EditText currentEtThumbnailUrl;// Giữ tham chiếu ô nhập URL Ảnh Bìa
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -67,18 +80,77 @@ public class MainActivity extends AppCompatActivity {
 
         initViews();
 
-        // 1. Khởi tạo danh sách rỗng ban đầu để Adapter không bị lỗi null
+        // 1. Khởi tạo ProgressDialog
+        progressDialog = new ProgressDialog(this);
+        progressDialog.setCancelable(false);
+
+        // 2. Đăng ký Launcher chọn & upload VIDEO từ thiết bị
+        videoPickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) {
+                        progressDialog.setMessage("Đang tải video lên đám mây, vui lòng chờ...");
+                        progressDialog.show();
+                        CloudinaryUploader.uploadMedia(this, uri, true, new CloudinaryUploader.UploadCallback() {
+                            @Override
+                            public void onSuccess(String secureUrl) {
+                                progressDialog.dismiss();
+                                Toast.makeText(MainActivity.this, "Tải video thành công!", Toast.LENGTH_SHORT).show();
+                                if (currentEtVideoUrl != null) {
+                                    currentEtVideoUrl.setText(secureUrl);
+                                }
+                            }
+
+                            @Override
+                            public void onError(String errorMessage) {
+                                progressDialog.dismiss();
+                                Toast.makeText(MainActivity.this, "Lỗi upload video: " + errorMessage, Toast.LENGTH_LONG).show();
+                            }
+                        });
+                    }
+                }
+        );
+
+        // 3. Đăng ký Launcher chọn & upload ẢNH BÌA (Thumbnail) từ thiết bị
+        imagePickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                uri -> {
+                    if (uri != null) {
+                        progressDialog.setMessage("Đang tải ảnh bìa lên đám mây...");
+                        progressDialog.show();
+                        // isVideo = false vì đây là Ảnh
+                        CloudinaryUploader.uploadMedia(this, uri, false, new CloudinaryUploader.UploadCallback() {
+                            @Override
+                            public void onSuccess(String secureUrl) {
+                                progressDialog.dismiss();
+                                Toast.makeText(MainActivity.this, "Tải ảnh thành công!", Toast.LENGTH_SHORT).show();
+                                if (currentEtThumbnailUrl != null) {
+                                    currentEtThumbnailUrl.setText(secureUrl);
+                                }
+                            }
+
+                            @Override
+                            public void onError(String errorMessage) {
+                                progressDialog.dismiss();
+                                Toast.makeText(MainActivity.this, "Lỗi upload ảnh: " + errorMessage, Toast.LENGTH_LONG).show();
+                            }
+                        });
+                    }
+                }
+        );
+
+        // Khởi tạo danh sách rỗng ban đầu
         fullVideoList = new ArrayList<>();
         currentFilteredList = new ArrayList<>();
 
-        // 2. Cài đặt Adapter trước
+        // Cài đặt Adapter
         setupAdapter();
 
-        // 3. Khởi tạo Firestore và nạp dữ liệu
+        // Khởi tạo Firestore và nạp dữ liệu
         db = FirebaseFirestore.getInstance();
         loadVideosFromFirebase();
 
-        // 4. Cài đặt các sự kiện nút bấm
+        // Cài đặt các sự kiện
         setupSearchAndAdminEvents();
     }
 
@@ -96,7 +168,6 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Tải danh sách phim trực tiếp từ bộ sưu tập "videos" trên Firebase Firestore.
-     * Tự động fallback về dữ liệu Local nếu Firestore trống hoặc lỗi mạng.
      */
     private void loadVideosFromFirebase() {
         db.collection("videos").get().addOnCompleteListener(task -> {
@@ -121,20 +192,10 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, "Đã tải " + fullVideoList.size() + " video từ Firebase Firestore", Toast.LENGTH_SHORT).show();
 
             } else {
-                Log.w(TAG, "Firebase Firestore chưa có dữ liệu hoặc lỗi mạng. Đang chuyển sang dữ liệu dự phòng...");
-                loadLocalFallbackVideos();
+                Log.w(TAG, "Firebase Firestore chưa có dữ liệu hoặc kết nối thất bại.");
+                Toast.makeText(MainActivity.this, "Chưa có dữ liệu video trên Firebase. Hãy bật Chế độ Admin để thêm!", Toast.LENGTH_LONG).show();
             }
         });
-    }
-
-    /**
-     * Tải dữ liệu dự phòng từ Local Storage (SharedPreferences).
-     */
-    private void loadLocalFallbackVideos() {
-        fullVideoList = VideoStorage.loadVideos(this);
-        currentFilteredList.clear();
-        currentFilteredList.addAll(fullVideoList);
-        videoAdapter.updateVideoList(currentFilteredList);
     }
 
     /**
@@ -189,7 +250,7 @@ public class MainActivity extends AppCompatActivity {
 
             if (isAdminMode) {
                 fabAddVideo.setVisibility(View.VISIBLE);
-                Toast.makeText(this, "Đã BẬT Chế độ Admin (Đồng bộ Firebase & Local)", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Đã BẬT Chế độ Admin (Lưu trực tiếp Firebase)", Toast.LENGTH_SHORT).show();
             } else {
                 fabAddVideo.setVisibility(View.GONE);
                 Toast.makeText(this, "Đã TẮT Chế độ Admin", Toast.LENGTH_SHORT).show();
@@ -215,7 +276,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Hiển thị Dialog Thêm/Sửa video và đồng bộ lên Firebase Cloud Firestore + Local Storage.
+     * Hiển thị Dialog Thêm/Sửa video và tích hợp upload Video/Ảnh từ máy lên Firebase + Cloudinary.
      */
     private void showAddEditVideoDialog(Video videoToEdit) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -224,21 +285,38 @@ public class MainActivity extends AppCompatActivity {
 
         TextView tvDialogTitle = dialogView.findViewById(R.id.tvDialogTitle);
         EditText etTitle = dialogView.findViewById(R.id.etDialogTitle);
+        EditText etDescription = dialogView.findViewById(R.id.etDialogDescription);
         EditText etVideoUrl = dialogView.findViewById(R.id.etDialogVideoUrl);
         EditText etThumbnailUrl = dialogView.findViewById(R.id.etDialogThumbnailUrl);
+        Button btnPickVideo = dialogView.findViewById(R.id.btnPickVideo);
+        Button btnPickImage = dialogView.findViewById(R.id.btnPickImage);
+
+        // Sự kiện bấm chọn video từ máy
+        btnPickVideo.setOnClickListener(v -> {
+            currentEtVideoUrl = etVideoUrl;
+            videoPickerLauncher.launch("video/*");
+        });
+
+        // Sự kiện bấm chọn ảnh bìa từ máy
+        btnPickImage.setOnClickListener(v -> {
+            currentEtThumbnailUrl = etThumbnailUrl;
+            imagePickerLauncher.launch("image/*");
+        });
 
         boolean isEditMode = (videoToEdit != null);
         if (isEditMode) {
             tvDialogTitle.setText("Sửa Thông Tin Video");
             etTitle.setText(videoToEdit.getTitle());
+            etDescription.setText(videoToEdit.getDescription());
             etVideoUrl.setText(videoToEdit.getVideoUrl());
             etThumbnailUrl.setText(videoToEdit.getThumbnailUrl());
         } else {
-            tvDialogTitle.setText("Thêm Video Mới (Firebase & Local)");
+            tvDialogTitle.setText("Thêm Video Mới (Firebase)");
         }
 
         builder.setPositiveButton(isEditMode ? "Cập Nhật" : "Thêm Mới", (dialog, which) -> {
             String title = etTitle.getText().toString().trim();
+            String description = etDescription.getText().toString().trim();
             String videoUrl = etVideoUrl.getText().toString().trim();
             String thumbnailUrl = etThumbnailUrl.getText().toString().trim();
 
@@ -250,21 +328,20 @@ public class MainActivity extends AppCompatActivity {
             Video videoTarget;
             if (isEditMode) {
                 videoToEdit.setTitle(title);
+                videoToEdit.setDescription(description);
                 videoToEdit.setVideoUrl(videoUrl);
                 videoToEdit.setThumbnailUrl(thumbnailUrl);
                 videoTarget = videoToEdit;
             } else {
-                videoTarget = new Video(title, thumbnailUrl, videoUrl);
+                videoTarget = new Video(title, description, thumbnailUrl, videoUrl);
                 fullVideoList.add(0, videoTarget);
             }
 
-            // 1. Lưu vĩnh viễn vào Local Storage
-            VideoStorage.saveVideos(this, fullVideoList);
             filterVideoList(etSearchQuery.getText().toString());
 
-            // 2. Đồng bộ trực tiếp lên Firebase Firestore
+            // Đồng bộ trực tiếp lên Firebase Cloud Firestore
             db.collection("videos").document(videoTarget.getId()).set(videoTarget)
-                    .addOnSuccessListener(aVoid -> Toast.makeText(this, "Đã đồng bộ lên Firebase!", Toast.LENGTH_SHORT).show())
+                    .addOnSuccessListener(aVoid -> Toast.makeText(this, "Đã lưu lên Firebase thành công!", Toast.LENGTH_SHORT).show())
                     .addOnFailureListener(e -> Log.e(TAG, "Lỗi đồng bộ Firebase", e));
         });
 
@@ -273,7 +350,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Xác nhận Xóa video khỏi Firebase Cloud Firestore và Local Storage.
+     * Xác nhận Xóa video khỏi Firebase Cloud Firestore.
      */
     private void confirmDeleteVideo(Video video) {
         new AlertDialog.Builder(this)
@@ -281,10 +358,9 @@ public class MainActivity extends AppCompatActivity {
                 .setMessage("Bạn có chắc chắn muốn xóa video \"" + video.getTitle() + "\" không?")
                 .setPositiveButton("Xóa", (dialog, which) -> {
                     fullVideoList.remove(video);
-                    VideoStorage.saveVideos(this, fullVideoList);
                     filterVideoList(etSearchQuery.getText().toString());
 
-                    // Xóa dữ liệu khỏi Firebase Firestore
+                    // Xóa dữ liệu trực tiếp khỏi Firebase Firestore
                     db.collection("videos").document(video.getId()).delete()
                             .addOnSuccessListener(aVoid -> Toast.makeText(this, "Đã xóa khỏi Firebase!", Toast.LENGTH_SHORT).show())
                             .addOnFailureListener(e -> Log.e(TAG, "Lỗi xóa trên Firebase", e));

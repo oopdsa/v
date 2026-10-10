@@ -88,13 +88,14 @@
 
     </RelativeLayout>
 
-    <!-- Khung Nút Tua Nhanh / Tua Lùi 10 Giây Ở Giữa Màn Hình -->
+    <!-- Khung Nút Tua Nhanh / Tua Lùi 10 Giây Ở Giữa Màn Hình (Mặc định ẩn, tự bật theo controller) -->
     <LinearLayout
         android:id="@+id/layoutSeekControls"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:orientation="horizontal"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
