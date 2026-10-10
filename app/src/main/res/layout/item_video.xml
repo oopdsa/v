@@ -6,19 +6,22 @@
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="12dp"
     android:layout_marginVertical="8dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="4dp"
-    app:strokeWidth="0dp">
+    app:cardBackgroundColor="#1A1A22"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="6dp"
+    app:strokeColor="#2A2A36"
+    app:strokeWidth="1dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:paddingBottom="12dp">
 
         <!-- ImageView hiển thị ảnh bìa (thumbnail) của video -->
         <ImageView
             android:id="@+id/imgThumbnail"
             android:layout_width="0dp"
-            android:layout_height="200dp"
+            android:layout_height="210dp"
             android:contentDescription="Video Thumbnail"
             android:scaleType="centerCrop"
             app:layout_constraintEnd_toEndOf="parent"
@@ -26,64 +29,98 @@
             app:layout_constraintTop_toTopOf="parent"
             tools:src="@tools:sample/backgrounds/scenic" />
 
-        <!-- Lớp phủ mờ đè phần dưới ảnh giúp chữ dễ đọc hơn -->
+        <!-- Biểu tượng Nút Play chính giữa ảnh bìa -->
+        <ImageView
+            android:id="@+id/imgPlayBadge"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="#80000000"
+            android:contentDescription="Play Icon"
+            android:padding="10dp"
+            android:src="@android:drawable/ic_media_play"
+            app:layout_constraintBottom_toBottomOf="@id/imgThumbnail"
+            app:layout_constraintEnd_toEndOf="@id/imgThumbnail"
+            app:layout_constraintStart_toStartOf="@id/imgThumbnail"
+            app:layout_constraintTop_toTopOf="@id/imgThumbnail"
+            app:tint="@android:color/white" />
+
+        <!-- Lớp phủ mờ đè phần dưới ảnh giúp thông tin rõ ràng -->
         <View
             android:id="@+id/vOverlay"
             android:layout_width="0dp"
-            android:layout_height="60dp"
-            android:background="#80000000"
+            android:layout_height="70dp"
+            android:background="#A0000000"
             app:layout_constraintBottom_toBottomOf="@id/imgThumbnail"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
 
-        <!-- TextView hiển thị tên phim / tiêu đề video -->
+        <!-- Tiêu đề Phim / Video -->
         <TextView
             android:id="@+id/tvTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:padding="12dp"
-            android:textColor="@android:color/white"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:maxLines="2"
+            android:layout_marginStart="14dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="8dp"
             android:ellipsize="end"
-            app:layout_constraintBottom_toBottomOf="@id/imgThumbnail"
+            android:maxLines="1"
+            android:textColor="@android:color/white"
+            android:textSize="17sp"
+            android:textStyle="bold"
             app:layout_constraintEnd_toStartOf="@id/layoutAdminActions"
             app:layout_constraintStart_toStartOf="parent"
-            tools:text="Tên phim mẫu 1" />
+            app:layout_constraintTop_toBottomOf="@id/imgThumbnail"
+            tools:text="Big Buck Bunny 4K Movie" />
 
-        <!-- Khung chứa nút Sửa / Xóa cho Chế độ Admin (Admin Mode) -->
+        <!-- Mô Tả Ngắn Video -->
+        <TextView
+            android:id="@+id/tvDescription"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="14dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="#B0B0B0"
+            android:textSize="13sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvTitle"
+            tools:text="Một bộ phim hoạt hình ngắn 3D nổi tiếng kể về chú thỏ khổng lồ cùng cuộc phiêu lưu thú vị trong rừng xanh." />
+
+        <!-- Khung chứa nút Sửa / Xóa cho Chế độ Admin -->
         <LinearLayout
             android:id="@+id/layoutAdminActions"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
             android:orientation="horizontal"
-            android:paddingEnd="8dp"
             android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="@id/imgThumbnail"
+            app:layout_constraintBottom_toBottomOf="@id/tvTitle"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@id/vOverlay"
+            app:layout_constraintTop_toTopOf="@id/tvTitle"
             tools:visibility="visible">
 
             <!-- Nút Sửa video (Edit) -->
             <ImageButton
                 android:id="@+id/btnEditVideo"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Sửa Video"
-                android:padding="8dp"
+                android:padding="6dp"
                 android:src="@drawable/ic_edit"
-                app:tint="@android:color/white" />
+                app:tint="#4CAF50" />
 
             <!-- Nút Xóa video (Delete) -->
             <ImageButton
                 android:id="@+id/btnDeleteVideo"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Xóa Video"
-                android:padding="8dp"
+                android:padding="6dp"
                 android:src="@drawable/ic_delete"
                 app:tint="#FF5252" />
 

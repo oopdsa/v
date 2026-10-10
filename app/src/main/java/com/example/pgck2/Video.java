@@ -5,13 +5,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Model class đại diện cho một video/bộ phim trong danh sách.
- * Hỗ trợ nhận diện tự động ID, mô tả (description) và ảnh thumbnail của video YouTube.
+ * Model class đại diện cho một video/bộ phim trong ứng dụng.
+ * Chứa tiêu đề, mô tả, đường dẫn hình ảnh và URL video.
  */
 public class Video {
     private String id;            // Mã định danh duy nhất của video
     private String title;         // Tên phim / Tiêu đề video
-    private String description;   // Mô tả nội dung video
+    private String description;   // Mô tả nội dung video / phim
     private String thumbnailUrl;  // Đường dẫn/URL ảnh bìa (thumbnail)
     private String videoUrl;      // Đường dẫn/URL truyền phát video (YouTube/MP4/HLS)
 
@@ -22,14 +22,14 @@ public class Video {
     }
 
     /**
-     * Constructor tự sinh ID ngẫu nhiên.
+     * Constructor ngắn gọn.
      */
     public Video(String title, String thumbnailUrl, String videoUrl) {
         this(UUID.randomUUID().toString(), title, "", thumbnailUrl, videoUrl);
     }
 
     /**
-     * Constructor có mô tả ngắn.
+     * Constructor gồm tiêu đề và mô tả.
      */
     public Video(String title, String description, String thumbnailUrl, String videoUrl) {
         this(UUID.randomUUID().toString(), title, description, thumbnailUrl, videoUrl);
@@ -39,10 +39,11 @@ public class Video {
      * Constructor đầy đủ tham số.
      */
     public Video(String id, String title, String description, String thumbnailUrl, String videoUrl) {
-        this.id = id != null ? id : UUID.randomUUID().toString();
-        this.title = title;
+        this.id = id != null && !id.isEmpty() ? id : UUID.randomUUID().toString();
+        this.title = title != null ? title : "";
         this.description = description != null ? description : "";
-        this.videoUrl = videoUrl;
+        this.videoUrl = videoUrl != null ? videoUrl : "";
+
         // Nếu thumbnailUrl trống và videoUrl là link YouTube -> tự sinh link thumbnail YouTube
         if ((thumbnailUrl == null || thumbnailUrl.trim().isEmpty()) && isYouTubeVideo()) {
             String youtubeId = getYouTubeVideoId();
@@ -81,7 +82,6 @@ public class Video {
     }
 
     public String getThumbnailUrl() {
-        // Nếu thumbnail trống và là video YouTube -> tự lấy thumbnail từ YouTube
         if ((thumbnailUrl == null || thumbnailUrl.trim().isEmpty()) && isYouTubeVideo()) {
             String youtubeId = getYouTubeVideoId();
             if (youtubeId != null) {
@@ -105,8 +105,6 @@ public class Video {
 
     /**
      * Kiểm tra xem đường dẫn videoUrl có phải là đường dẫn YouTube hay không.
-     *
-     * @return true nếu là URL YouTube
      */
     public boolean isYouTubeVideo() {
         return getYouTubeVideoId() != null;
@@ -114,8 +112,6 @@ public class Video {
 
     /**
      * Tách ID của video YouTube từ các dạng URL khác nhau (watch?v=, youtu.be/, embed/).
-     *
-     * @return YouTube Video ID (ví dụ: "L_LUpnjgPso") hoặc null nếu không phải link YouTube
      */
     public String getYouTubeVideoId() {
         if (videoUrl == null || videoUrl.trim().isEmpty()) {
@@ -127,7 +123,6 @@ public class Video {
         if (matcher.find()) {
             return matcher.group();
         }
-        // Nếu truyền vào ID trực tiếp 11 ký tự
         if (videoUrl.matches("^[a-zA-Z0-9_-]{11}$")) {
             return videoUrl;
         }

@@ -34,7 +34,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * MainActivity hiển thị danh sách video, hỗ trợ Tìm Kiếm, Chế độ Admin (Thêm/Sửa/Xóa video)
+ * MainActivity hiển thị danh sách phim/video đẳng cấp Cinema.
+ * Hỗ trợ Tìm kiếm thời gian thực (theo tên & mô tả), Chế độ Admin (Thêm/Sửa/Xóa video)
  * Dữ liệu đồng bộ trực tiếp với FIREBASE CLOUD FIRESTORE
  * và tích hợp Upload Video/Ảnh Bìa lên Đám mây qua CloudinaryUploader.
  */
@@ -205,10 +206,11 @@ public class MainActivity extends AppCompatActivity {
         videoAdapter = new VideoAdapter(
                 this, currentFilteredList,
                 video -> {
-                    // 1. CLICK XEM VIDEO -> Mở PlayerActivity
+                    // 1. CLICK XEM VIDEO -> Mở PlayerActivity và truyền đầy đủ URL, Tiêu đề, Mô tả
                     Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
                     intent.putExtra(PlayerActivity.EXTRA_VIDEO_URL, video.getVideoUrl());
                     intent.putExtra(PlayerActivity.EXTRA_VIDEO_TITLE, video.getTitle());
+                    intent.putExtra(PlayerActivity.EXTRA_VIDEO_DESC, video.getDescription());
                     startActivity(intent);
                 },
                 (video, position) -> showAddEditVideoDialog(video),
@@ -260,6 +262,9 @@ public class MainActivity extends AppCompatActivity {
         fabAddVideo.setOnClickListener(v -> showAddEditVideoDialog(null));
     }
 
+    /**
+     * Lọc danh sách video thời gian thực theo cả tiêu đề lẫn nội dung mô tả.
+     */
     private void filterVideoList(String query) {
         currentFilteredList.clear();
         if (query == null || query.trim().isEmpty()) {
@@ -267,7 +272,9 @@ public class MainActivity extends AppCompatActivity {
         } else {
             String lowerCaseQuery = query.toLowerCase().trim();
             for (Video video : fullVideoList) {
-                if (video.getTitle() != null && video.getTitle().toLowerCase().contains(lowerCaseQuery)) {
+                boolean matchTitle = video.getTitle() != null && video.getTitle().toLowerCase().contains(lowerCaseQuery);
+                boolean matchDesc = video.getDescription() != null && video.getDescription().toLowerCase().contains(lowerCaseQuery);
+                if (matchTitle || matchDesc) {
                     currentFilteredList.add(video);
                 }
             }

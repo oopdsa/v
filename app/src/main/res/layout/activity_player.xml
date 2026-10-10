@@ -35,7 +35,7 @@
         android:id="@+id/layoutTopBar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="#80000000"
+        android:background="#A0000000"
         android:paddingHorizontal="16dp"
         android:paddingTop="24dp"
         android:paddingBottom="12dp"
@@ -65,7 +65,7 @@
             android:layout_marginStart="12dp"
             android:layout_marginEnd="12dp"
             android:layout_toEndOf="@id/btnExitPlayer"
-            android:layout_toStartOf="@id/btnQuality"
+            android:layout_toStartOf="@id/btnPip"
             android:ellipsize="end"
             android:maxLines="1"
             android:textColor="@android:color/white"
@@ -73,18 +73,6 @@
             android:textStyle="bold"
             tools:text="Tên phim đang phát..." />
 
-        <!-- Nút Chỉnh Độ Phân Giải Video (Quality / Resolution Button) -->
-        <ImageButton
-            android:id="@+id/btnQuality"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_alignParentEnd="true"
-            android:layout_centerVertical="true"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Chỉnh độ phân giải"
-            android:padding="8dp"
-            android:src="@drawable/ic_quality"
-            app:tint="@android:color/white" />
         <!-- Nút Bật Chế Độ PiP (Picture-in-Picture) -->
         <ImageButton
             android:id="@+id/btnPip"
@@ -99,10 +87,57 @@
             android:src="@drawable/ic_pip"
             app:tint="@android:color/white" />
 
+        <!-- Nút Chỉnh Độ Phân Giải Video (Quality / Resolution Button) -->
+        <ImageButton
+            android:id="@+id/btnQuality"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Chỉnh độ phân giải"
+            android:padding="8dp"
+            android:src="@drawable/ic_quality"
+            app:tint="@android:color/white" />
 
     </RelativeLayout>
 
-    <!-- Khung Nút Tua Nhanh / Tua Lùi 10 Giây Ở Giữa Màn Hình (Mặc định ẩn, tự bật theo controller) -->
+    <!-- Khung Bảng Thông Tin Mô Tả Phim Ở Phía Dưới -->
+    <LinearLayout
+        android:id="@+id/layoutInfoPanel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="#A0000000"
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:id="@+id/tvPlayerDescLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Mô Tả Phim"
+            android:textColor="#E50914"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvPlayerDesc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:maxLines="3"
+            android:textColor="#D0D0D0"
+            android:textSize="13sp"
+            tools:text="Nội dung mô tả phim đầy đủ sẽ hiển thị chi tiết tại đây..." />
+
+    </LinearLayout>
+
+    <!-- Khung Nút Tua Nhanh / Tua Lùi 10 Giây Ở Giữa Màn Hình -->
     <LinearLayout
         android:id="@+id/layoutSeekControls"
         android:layout_width="wrap_content"
@@ -110,10 +145,10 @@
         android:gravity="center"
         android:orientation="horizontal"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/layoutInfoPanel"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/layoutTopBar">
 
         <!-- Nút Tua Lùi 10 Giây (-10s) -->
         <ImageButton
@@ -121,7 +156,7 @@
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:layout_marginEnd="40dp"
-            android:background="#66000000"
+            android:background="#80000000"
             android:contentDescription="Tua lùi 10 giây"
             android:padding="12dp"
             android:src="@drawable/ic_rewind_10"
@@ -133,7 +168,7 @@
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:layout_marginStart="40dp"
-            android:background="#66000000"
+            android:background="#80000000"
             android:contentDescription="Tua tới 10 giây"
             android:padding="12dp"
             android:src="@drawable/ic_forward_10"

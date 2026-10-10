@@ -36,22 +36,33 @@ import androidx.media3.ui.PlayerView;
 
 import java.util.Collections;
 
+/**
+ * PlayerActivity hiển thị trình phát video đa năng (ExoPlayer + YouTube WebView)
+ * tích hợp nút Tua ±10s, Chọn Độ phân giải, Mô tả phim và Chế độ PiP (Picture-in-Picture).
+ */
 public class PlayerActivity extends AppCompatActivity {
 
     public static final String EXTRA_VIDEO_URL = "extra_video_url";
     public static final String EXTRA_VIDEO_TITLE = "extra_video_title";
+    public static final String EXTRA_VIDEO_DESC = "extra_video_desc";
 
     private PlayerView playerView;
     private WebView wvYouTubePlayer;
     private RelativeLayout layoutTopBar;
+    private View layoutSeekControls;
+    private View layoutInfoPanel;
     private ImageButton btnExitPlayer;
     private ImageButton btnQuality;
-    private ImageButton btnPip; // Nút PiP thủ công trên giao diện
+    private ImageButton btnPip;
+    private ImageButton btnRewind10;
+    private ImageButton btnForward10;
     private TextView tvPlayerVideoTitle;
+    private TextView tvPlayerDesc;
 
     private ExoPlayer player;
     private String videoUrl;
     private String videoTitle;
+    private String videoDesc;
     private boolean isYouTube = false;
 
     // Hằng số điều khiển PiP
@@ -89,6 +100,17 @@ public class PlayerActivity extends AppCompatActivity {
                 videoTitle = intent.getStringExtra(EXTRA_VIDEO_TITLE);
                 tvPlayerVideoTitle.setText(videoTitle);
             }
+            if (intent.hasExtra(EXTRA_VIDEO_DESC)) {
+                videoDesc = intent.getStringExtra(EXTRA_VIDEO_DESC);
+                if (videoDesc != null && !videoDesc.trim().isEmpty()) {
+                    tvPlayerDesc.setText(videoDesc);
+                    layoutInfoPanel.setVisibility(View.VISIBLE);
+                } else {
+                    layoutInfoPanel.setVisibility(View.GONE);
+                }
+            } else {
+                layoutInfoPanel.setVisibility(View.GONE);
+            }
         }
 
         setupControlListeners();
@@ -103,21 +125,55 @@ public class PlayerActivity extends AppCompatActivity {
         playerView = findViewById(R.id.playerView);
         wvYouTubePlayer = findViewById(R.id.wvYouTubePlayer);
         layoutTopBar = findViewById(R.id.layoutTopBar);
+        layoutSeekControls = findViewById(R.id.layoutSeekControls);
+        layoutInfoPanel = findViewById(R.id.layoutInfoPanel);
         btnExitPlayer = findViewById(R.id.btnExitPlayer);
         btnQuality = findViewById(R.id.btnQuality);
-        btnPip = findViewById(R.id.btnPip); // Ánh xạ nút PiP
+        btnPip = findViewById(R.id.btnPip);
+        btnRewind10 = findViewById(R.id.btnRewind10);
+        btnForward10 = findViewById(R.id.btnForward10);
         tvPlayerVideoTitle = findViewById(R.id.tvPlayerVideoTitle);
+        tvPlayerDesc = findViewById(R.id.tvPlayerDesc);
+
+        // Mặc định ẩn nút tua cho tới khi chạm màn hình
+        if (layoutSeekControls != null) {
+            layoutSeekControls.setVisibility(View.GONE);
+        }
     }
 
     private void setupControlListeners() {
         // Nút thoát
         btnExitPlayer.setOnClickListener(v -> finish());
 
+        // Nút tua 10 giây
+        if (btnRewind10 != null) {
+            btnRewind10.setOnClickListener(v -> seekVideoRelative(-10));
+        }
+        if (btnForward10 != null) {
+            btnForward10.setOnClickListener(v -> seekVideoRelative(10));
+        }
+
         // Nút chỉnh độ phân giải
         btnQuality.setOnClickListener(v -> showResolutionDialog());
 
-        // Nút bấm PiP thủ công (Cho bạn của bạn showcase)
+        // Nút bấm PiP thủ công
         btnPip.setOnClickListener(v -> enterPipMode());
+
+        // Đồng bộ ẩn/hiện điều khiển với PlayerView
+        playerView.setControllerVisibilityListener((PlayerView.ControllerVisibilityListener) visibility -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode()) {
+                return;
+            }
+            if (layoutSeekControls != null) {
+                layoutSeekControls.setVisibility(visibility);
+            }
+            if (layoutTopBar != null) {
+                layoutTopBar.setVisibility(visibility);
+            }
+            if (layoutInfoPanel != null && videoDesc != null && !videoDesc.trim().isEmpty()) {
+                layoutInfoPanel.setVisibility(visibility);
+            }
+        });
     }
 
     private void setupPlayer() {
@@ -135,6 +191,25 @@ public class PlayerActivity extends AppCompatActivity {
             isYouTube = false;
             playDirectMediaVideo();
         }
+    }
+
+    private void seekVideoRelative(int secondsDelta) {
+        if (isYouTube) {
+            wvYouTubePlayer.evaluateJavascript("seekRelative(" + secondsDelta + ");", null);
+        } else {
+            if (player != null) {
+                long currentPos = player.getCurrentPosition();
+                long targetPos = currentPos + (secondsDelta * 1000L);
+                if (targetPos < 0) targetPos = 0;
+                long duration = player.getDuration();
+                if (duration > 0 && targetPos > duration) targetPos = duration;
+
+                player.seekTo(targetPos);
+            }
+        }
+
+        String message = secondsDelta > 0 ? "Tua tới " + secondsDelta + "s" : "Tua lùi " + Math.abs(secondsDelta) + "s";
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
     private void showResolutionDialog() {
@@ -195,8 +270,15 @@ public class PlayerActivity extends AppCompatActivity {
                 + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no\">"
                 + "<style>body{margin:0;padding:0;background-color:#000;display:flex;justify-content:center;align-items:center;height:100vh;}"
                 + "iframe{width:100%;height:100%;border:none;}</style>"
+                + "<script src=\"https://www.youtube.com/iframe_api\"></script>"
+                + "<script>"
+                + "var player;"
+                + "function onYouTubeIframeAPIReady(){ player = new YT.Player('ytplayer'); }"
+                + "function seekRelative(sec){ if(player && player.getCurrentTime){ player.seekTo(player.getCurrentTime() + sec, true); } }"
+                + "function setPlaybackQuality(q){ if(player && player.setPlaybackQuality){ player.setPlaybackQuality(q); } }"
+                + "</script>"
                 + "</head><body>"
-                + "<iframe src=\"https://www.youtube.com/embed/" + youtubeId + "?autoplay=1&playsinline=1\" "
+                + "<iframe id=\"ytplayer\" src=\"https://www.youtube.com/embed/" + youtubeId + "?enablejsapi=1&autoplay=1&playsinline=1&origin=https://www.youtube.com&widget_referrer=https://www.youtube.com\" "
                 + "allow=\"autoplay; encrypted-media; picture-in-picture\" allowfullscreen></iframe>"
                 + "</body></html>";
 
@@ -299,9 +381,14 @@ public class PlayerActivity extends AppCompatActivity {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
         if (isInPictureInPictureMode) {
             layoutTopBar.setVisibility(View.GONE);
+            if (layoutSeekControls != null) layoutSeekControls.setVisibility(View.GONE);
+            if (layoutInfoPanel != null) layoutInfoPanel.setVisibility(View.GONE);
             playerView.setUseController(false);
         } else {
             layoutTopBar.setVisibility(View.VISIBLE);
+            if (layoutInfoPanel != null && videoDesc != null && !videoDesc.trim().isEmpty()) {
+                layoutInfoPanel.setVisibility(View.VISIBLE);
+            }
             playerView.setUseController(true);
         }
     }

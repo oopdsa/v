@@ -1,6 +1,7 @@
 package com.example.pgck2;
 
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,7 +20,7 @@ import java.util.List;
 
 /**
  * Adapter quản lý hiển thị danh sách video trong RecyclerView.
- * Hỗ trợ hiển thị nút Sửa / Xóa khi ở Chế độ Admin (Admin Mode).
+ * Hỗ trợ hiển thị Tiêu đề, Mô tả và nút Sửa / Xóa khi ở Chế độ Admin.
  */
 public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHolder> {
 
@@ -88,6 +89,14 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
         // Hiển thị tiêu đề
         holder.tvTitle.setText(video.getTitle());
 
+        // Hiển thị mô tả ngắn (nếu không có thì ẩn đi)
+        if (video.getDescription() != null && !video.getDescription().trim().isEmpty()) {
+            holder.tvDescription.setText(video.getDescription());
+            holder.tvDescription.setVisibility(View.VISIBLE);
+        } else {
+            holder.tvDescription.setVisibility(View.GONE);
+        }
+
         // Sử dụng Glide nạp ảnh thumbnail
         Glide.with(context)
                 .load(video.getThumbnailUrl())
@@ -102,10 +111,16 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             holder.layoutAdminActions.setVisibility(View.GONE);
         }
 
-        // Bắt sự kiện click xem video
+        // Bắt sự kiện click xem video (Chuyển sang PlayerActivity đồng thời gửi tiêu đề, url, mô tả)
         holder.itemView.setOnClickListener(v -> {
             if (clickListener != null) {
                 clickListener.onVideoClick(video);
+            } else {
+                Intent intent = new Intent(context, PlayerActivity.class);
+                intent.putExtra(PlayerActivity.EXTRA_VIDEO_URL, video.getVideoUrl());
+                intent.putExtra(PlayerActivity.EXTRA_VIDEO_TITLE, video.getTitle());
+                intent.putExtra(PlayerActivity.EXTRA_VIDEO_DESC, video.getDescription());
+                context.startActivity(intent);
             }
         });
 
@@ -134,6 +149,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
     public static class VideoViewHolder extends RecyclerView.ViewHolder {
         ImageView imgThumbnail;
         TextView tvTitle;
+        TextView tvDescription;
         LinearLayout layoutAdminActions;
         ImageButton btnEdit;
         ImageButton btnDelete;
@@ -142,6 +158,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             super(itemView);
             imgThumbnail = itemView.findViewById(R.id.imgThumbnail);
             tvTitle = itemView.findViewById(R.id.tvTitle);
+            tvDescription = itemView.findViewById(R.id.tvDescription);
             layoutAdminActions = itemView.findViewById(R.id.layoutAdminActions);
             btnEdit = itemView.findViewById(R.id.btnEditVideo);
             btnDelete = itemView.findViewById(R.id.btnDeleteVideo);
