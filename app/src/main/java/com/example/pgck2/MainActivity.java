@@ -3,12 +3,15 @@ package com.example.pgck2;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
@@ -25,6 +28,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -35,8 +39,8 @@ import java.util.List;
 
 /**
  * MainActivity hiển thị danh sách phim/video đẳng cấp Cinema.
- * Hỗ trợ Tìm kiếm thời gian thực (theo tên & mô tả), Chế độ Admin (Thêm/Sửa/Xóa video)
- * Dữ liệu đồng bộ trực tiếp với FIREBASE CLOUD FIRESTORE
+ * Hỗ trợ ViewPager2 Slider phim nổi bật (Popular), Tìm kiếm thời gian thực,
+ * Chế độ Admin (Thêm/Sửa/Xóa video & Đánh dấu Popular Slider) đồng bộ trực tiếp với FIREBASE CLOUD FIRESTORE
  * và tích hợp Upload Video/Ảnh Bìa lên Đám mây qua CloudinaryUploader.
  */
 public class MainActivity extends AppCompatActivity {
@@ -47,6 +51,12 @@ public class MainActivity extends AppCompatActivity {
     private VideoAdapter videoAdapter;
     private List<Video> fullVideoList;
     private List<Video> currentFilteredList;
+
+    private ViewPager2 viewPagerPopular;
+    private ImageButton btnPrevPopular;
+    private ImageButton btnNextPopular;
+    private PopularVideoAdapter popularVideoAdapter;
+    private List<Video> popularVideoList;
 
     private ImageButton btnToggleAdmin;
     private ImageButton btnToggleSearch;
@@ -65,6 +75,23 @@ public class MainActivity extends AppCompatActivity {
 
     private EditText currentEtVideoUrl;    // Giữ tham chiếu ô nhập URL Video
     private EditText currentEtThumbnailUrl;// Giữ tham chiếu ô nhập URL Ảnh Bìa
+
+    // Handler tự động cuộn Slider Popular mỗi 12 giây
+    private final Handler sliderHandler = new Handler(Looper.getMainLooper());
+    private final Runnable sliderRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (viewPagerPopular != null && popularVideoAdapter != null) {
+                int currentItem = viewPagerPopular.getCurrentItem();
+                int totalItems = popularVideoAdapter.getItemCount();
+                if (totalItems > 0) {
+                    int nextItem = (currentItem + 1) % totalItems;
+                    viewPagerPopular.setCurrentItem(nextItem, true);
+                }
+            }
+            sliderHandler.postDelayed(this, 12000); // 12 giây
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,7 +146,6 @@ public class MainActivity extends AppCompatActivity {
                     if (uri != null) {
                         progressDialog.setMessage("Đang tải ảnh bìa lên đám mây...");
                         progressDialog.show();
-                        // isVideo = false vì đây là Ảnh
                         CloudinaryUploader.uploadMedia(this, uri, false, new CloudinaryUploader.UploadCallback() {
                             @Override
                             public void onSuccess(String secureUrl) {
@@ -143,8 +169,9 @@ public class MainActivity extends AppCompatActivity {
         // Khởi tạo danh sách rỗng ban đầu
         fullVideoList = new ArrayList<>();
         currentFilteredList = new ArrayList<>();
+        popularVideoList = new ArrayList<>();
 
-        // Cài đặt Adapter
+        // Cài đặt Adapters
         setupAdapter();
 
         // Khởi tạo Firestore và nạp dữ liệu
@@ -163,6 +190,10 @@ public class MainActivity extends AppCompatActivity {
         etSearchQuery = findViewById(R.id.etSearchQuery);
         btnClearSearch = findViewById(R.id.btnClearSearch);
         fabAddVideo = findViewById(R.id.fabAddVideo);
+
+        viewPagerPopular = findViewById(R.id.viewPagerPopular);
+        btnPrevPopular = findViewById(R.id.btnPrevPopular);
+        btnNextPopular = findViewById(R.id.btnNextPopular);
 
         rvVideos.setLayoutManager(new LinearLayoutManager(this));
     }
@@ -190,6 +221,9 @@ public class MainActivity extends AppCompatActivity {
                 currentFilteredList.addAll(fullVideoList);
                 videoAdapter.updateVideoList(currentFilteredList);
 
+                // Nạp danh sách phim Nổi bật (Popular) dựa trên cờ isPopular()
+                updatePopularSliderList();
+
                 Toast.makeText(MainActivity.this, "Đã tải " + fullVideoList.size() + " video từ Firebase Firestore", Toast.LENGTH_SHORT).show();
 
             } else {
@@ -200,13 +234,37 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Khởi tạo Adapter và xử lý 3 hành động: Phát phim, Sửa video (Admin), Xóa video (Admin).
+     * Cập nhật danh sách các phim nổi bật (isPopular = true) lên ViewPager2 Slider.
+     */
+    private void updatePopularSliderList() {
+        popularVideoList.clear();
+        for (Video video : fullVideoList) {
+            if (video.isPopular()) {
+                popularVideoList.add(video);
+            }
+        }
+
+        // Nếu Admin chưa tích chọn phim popular nào, mặc định nạp tối đa 5 phim đầu tiên làm slider
+        if (popularVideoList.isEmpty()) {
+            int sliderCount = Math.min(fullVideoList.size(), 5);
+            for (int i = 0; i < sliderCount; i++) {
+                popularVideoList.add(fullVideoList.get(i));
+            }
+        }
+
+        if (popularVideoAdapter != null) {
+            popularVideoAdapter.updateList(popularVideoList);
+        }
+    }
+
+    /**
+     * Khởi tạo Adapters cho RecyclerView và ViewPager2 Popular Slider.
      */
     private void setupAdapter() {
+        // Adapter cho danh sách chính
         videoAdapter = new VideoAdapter(
                 this, currentFilteredList,
                 video -> {
-                    // 1. CLICK XEM VIDEO -> Mở PlayerActivity và truyền đầy đủ URL, Tiêu đề, Mô tả
                     Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
                     intent.putExtra(PlayerActivity.EXTRA_VIDEO_URL, video.getVideoUrl());
                     intent.putExtra(PlayerActivity.EXTRA_VIDEO_TITLE, video.getTitle());
@@ -216,8 +274,27 @@ public class MainActivity extends AppCompatActivity {
                 (video, position) -> showAddEditVideoDialog(video),
                 (video, position) -> confirmDeleteVideo(video)
         );
-
         rvVideos.setAdapter(videoAdapter);
+
+        // Adapter cho ViewPager2 Popular Slider
+        popularVideoAdapter = new PopularVideoAdapter(this, popularVideoList);
+        viewPagerPopular.setAdapter(popularVideoAdapter);
+
+        // Nút chuyển phim trên Slider Popular
+        btnPrevPopular.setOnClickListener(v -> {
+            int current = viewPagerPopular.getCurrentItem();
+            if (current > 0) {
+                viewPagerPopular.setCurrentItem(current - 1, true);
+            }
+        });
+
+        btnNextPopular.setOnClickListener(v -> {
+            int current = viewPagerPopular.getCurrentItem();
+            int total = popularVideoAdapter.getItemCount();
+            if (total > 0) {
+                viewPagerPopular.setCurrentItem((current + 1) % total, true);
+            }
+        });
     }
 
     private void setupSearchAndAdminEvents() {
@@ -283,7 +360,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Hiển thị Dialog Thêm/Sửa video và tích hợp upload Video/Ảnh từ máy lên Firebase + Cloudinary.
+     * Hiển thị Dialog Thêm/Sửa video và tích hợp chọn quyền Phim Nổi Bật (Popular) + Upload Video/Ảnh.
      */
     private void showAddEditVideoDialog(Video videoToEdit) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -293,6 +370,7 @@ public class MainActivity extends AppCompatActivity {
         TextView tvDialogTitle = dialogView.findViewById(R.id.tvDialogTitle);
         EditText etTitle = dialogView.findViewById(R.id.etDialogTitle);
         EditText etDescription = dialogView.findViewById(R.id.etDialogDescription);
+        CheckBox cbIsPopular = dialogView.findViewById(R.id.cbIsPopular);
         EditText etVideoUrl = dialogView.findViewById(R.id.etDialogVideoUrl);
         EditText etThumbnailUrl = dialogView.findViewById(R.id.etDialogThumbnailUrl);
         Button btnPickVideo = dialogView.findViewById(R.id.btnPickVideo);
@@ -315,15 +393,18 @@ public class MainActivity extends AppCompatActivity {
             tvDialogTitle.setText("Sửa Thông Tin Video");
             etTitle.setText(videoToEdit.getTitle());
             etDescription.setText(videoToEdit.getDescription());
+            cbIsPopular.setChecked(videoToEdit.isPopular());
             etVideoUrl.setText(videoToEdit.getVideoUrl());
             etThumbnailUrl.setText(videoToEdit.getThumbnailUrl());
         } else {
             tvDialogTitle.setText("Thêm Video Mới (Firebase)");
+            cbIsPopular.setChecked(false);
         }
 
         builder.setPositiveButton(isEditMode ? "Cập Nhật" : "Thêm Mới", (dialog, which) -> {
             String title = etTitle.getText().toString().trim();
             String description = etDescription.getText().toString().trim();
+            boolean isPopular = cbIsPopular.isChecked();
             String videoUrl = etVideoUrl.getText().toString().trim();
             String thumbnailUrl = etThumbnailUrl.getText().toString().trim();
 
@@ -336,15 +417,17 @@ public class MainActivity extends AppCompatActivity {
             if (isEditMode) {
                 videoToEdit.setTitle(title);
                 videoToEdit.setDescription(description);
+                videoToEdit.setPopular(isPopular);
                 videoToEdit.setVideoUrl(videoUrl);
                 videoToEdit.setThumbnailUrl(thumbnailUrl);
                 videoTarget = videoToEdit;
             } else {
-                videoTarget = new Video(title, description, thumbnailUrl, videoUrl);
+                videoTarget = new Video(title, description, thumbnailUrl, videoUrl, isPopular);
                 fullVideoList.add(0, videoTarget);
             }
 
             filterVideoList(etSearchQuery.getText().toString());
+            updatePopularSliderList();
 
             // Đồng bộ trực tiếp lên Firebase Cloud Firestore
             db.collection("videos").document(videoTarget.getId()).set(videoTarget)
@@ -366,6 +449,7 @@ public class MainActivity extends AppCompatActivity {
                 .setPositiveButton("Xóa", (dialog, which) -> {
                     fullVideoList.remove(video);
                     filterVideoList(etSearchQuery.getText().toString());
+                    updatePopularSliderList();
 
                     // Xóa dữ liệu trực tiếp khỏi Firebase Firestore
                     db.collection("videos").document(video.getId()).delete()
@@ -374,5 +458,17 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("Hủy", null)
                 .show();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        sliderHandler.postDelayed(sliderRunnable, 12000);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        sliderHandler.removeCallbacks(sliderRunnable);
     }
 }

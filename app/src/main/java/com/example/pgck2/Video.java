@@ -6,13 +6,14 @@ import java.util.regex.Pattern;
 
 /**
  * Model class đại diện cho một video/bộ phim trong ứng dụng.
- * Chứa tiêu đề, mô tả, đường dẫn hình ảnh và URL video.
+ * Chứa tiêu đề, mô tả, đường dẫn hình ảnh, URL video và trạng thái Nổi bật (isPopular).
  */
 public class Video {
     private String id;            // Mã định danh duy nhất của video
     private String title;         // Tên phim / Tiêu đề video
     private String description;   // Mô tả nội dung video / phim
     private String thumbnailUrl;  // Đường dẫn/URL ảnh bìa (thumbnail)
+    private boolean isPopular;    // Đánh dấu phim Nổi bật (Popular Slider)
     private String videoUrl;      // Đường dẫn/URL truyền phát video (YouTube/MP4/HLS)
 
     /**
@@ -25,24 +26,32 @@ public class Video {
      * Constructor ngắn gọn.
      */
     public Video(String title, String thumbnailUrl, String videoUrl) {
-        this(UUID.randomUUID().toString(), title, "", thumbnailUrl, videoUrl);
+        this(UUID.randomUUID().toString(), title, "", thumbnailUrl, videoUrl, false);
     }
 
     /**
      * Constructor gồm tiêu đề và mô tả.
      */
     public Video(String title, String description, String thumbnailUrl, String videoUrl) {
-        this(UUID.randomUUID().toString(), title, description, thumbnailUrl, videoUrl);
+        this(UUID.randomUUID().toString(), title, description, thumbnailUrl, videoUrl, false);
+    }
+
+    /**
+     * Constructor có trạng thái Popular.
+     */
+    public Video(String title, String description, String thumbnailUrl, String videoUrl, boolean isPopular) {
+        this(UUID.randomUUID().toString(), title, description, thumbnailUrl, videoUrl, isPopular);
     }
 
     /**
      * Constructor đầy đủ tham số.
      */
-    public Video(String id, String title, String description, String thumbnailUrl, String videoUrl) {
+    public Video(String id, String title, String description, String thumbnailUrl, String videoUrl, boolean isPopular) {
         this.id = id != null && !id.isEmpty() ? id : UUID.randomUUID().toString();
         this.title = title != null ? title : "";
         this.description = description != null ? description : "";
         this.videoUrl = videoUrl != null ? videoUrl : "";
+        this.isPopular = isPopular;
 
         // Nếu thumbnailUrl trống và videoUrl là link YouTube -> tự sinh link thumbnail YouTube
         if ((thumbnailUrl == null || thumbnailUrl.trim().isEmpty()) && isYouTubeVideo()) {
@@ -79,6 +88,22 @@ public class Video {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public boolean isPopular() {
+        return isPopular;
+    }
+
+    public boolean getIsPopular() {
+        return isPopular;
+    }
+
+    public void setPopular(boolean popular) {
+        isPopular = popular;
+    }
+
+    public void setIsPopular(boolean popular) {
+        isPopular = popular;
     }
 
     public String getThumbnailUrl() {

@@ -1,172 +1,234 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0F0F14"
+    android:background="#121212"
     tools:context=".MainActivity">
 
-    <!-- Header Bar chứa Logo Thương Hiệu PGCK CINEMA, Nút Tìm Kiếm và Nút Chế độ Admin -->
-    <RelativeLayout
-        android:id="@+id/layoutHeader"
-        android:layout_width="0dp"
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="16dp"
-        android:paddingTop="18dp"
-        android:paddingBottom="10dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:background="#121212"
+        app:elevation="0dp">
 
-        <!-- Logo / Thương Hiệu Cinema -->
-        <LinearLayout
-            android:layout_width="wrap_content"
+        <!-- HEADER: Logo, Search, Nút Đổi Chế Độ -->
+        <RelativeLayout
+            android:id="@+id/layoutHeader"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
-            android:layout_centerVertical="true"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="8dp">
 
-            <View
-                android:layout_width="4dp"
-                android:layout_height="22dp"
-                android:layout_marginEnd="8dp"
-                android:background="#E50914" />
-
-            <TextView
-                android:id="@+id/tvHeaderTitle"
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:letterSpacing="0.05"
-                android:text="PGCK CINEMA"
-                android:textColor="@android:color/white"
-                android:textSize="22sp"
-                android:textStyle="bold" />
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-        </LinearLayout>
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="22dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="#E50914" />
 
-        <!-- Nút Bật/Tắt Chế độ Admin -->
-        <ImageButton
-            android:id="@+id/btnToggleAdmin"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:layout_alignParentEnd="true"
-            android:layout_centerVertical="true"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Chế độ Admin"
-            android:padding="9dp"
-            android:src="@drawable/ic_admin"
-            app:tint="@android:color/white" />
+                <TextView
+                    android:id="@+id/tvHeaderTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="0.05"
+                    android:text="PGCK2"
+                    android:textColor="@android:color/white"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
-        <!-- Nút Bật/Tắt Thanh tìm kiếm -->
-        <ImageButton
-            android:id="@+id/btnToggleSearch"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:layout_centerVertical="true"
-            android:layout_marginEnd="8dp"
-            android:layout_toStartOf="@id/btnToggleAdmin"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Tìm kiếm video"
-            android:padding="9dp"
-            android:src="@drawable/ic_search"
-            app:tint="@android:color/white" />
+            <ImageButton
+                android:id="@+id/btnToggleAdmin"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Chế độ Admin"
+                android:padding="9dp"
+                android:src="@drawable/ic_admin"
+                app:tint="@android:color/white" />
 
-    </RelativeLayout>
+            <ImageButton
+                android:id="@+id/btnToggleSearch"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="8dp"
+                android:layout_toStartOf="@id/btnToggleAdmin"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Tìm kiếm"
+                android:padding="9dp"
+                android:src="@drawable/ic_search"
+                app:tint="@android:color/white" />
+        </RelativeLayout>
 
-    <!-- Thanh Tìm Kiếm Đẳng Cấp Cinema -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/cardSearch"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="4dp"
-        android:layout_marginBottom="8dp"
-        android:visibility="gone"
-        app:cardBackgroundColor="#1F1F28"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="4dp"
-        app:strokeColor="#2E2E3C"
-        app:strokeWidth="1dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/layoutHeader"
-        tools:visibility="visible">
+        <!-- Thanh Tìm Kiếm Đẳng Cấp -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardSearch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="#1F1F28"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            app:strokeColor="#2E2E3C"
+            app:strokeWidth="1dp"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="4dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_search"
+                    app:tint="#888888" />
+
+                <EditText
+                    android:id="@+id/etSearchQuery"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:hint="Tìm phim..."
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:padding="10dp"
+                    android:textColor="@android:color/white"
+                    android:textColorHint="#777777"
+                    android:textSize="14sp" />
+
+                <ImageButton
+                    android:id="@+id/btnClearSearch"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="6dp"
+                    android:src="@drawable/ic_close"
+                    app:tint="#888888" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- NỘI DUNG CHÍNH (CUỘN ĐƯỢC) -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="4dp">
+            android:orientation="vertical"
+            android:paddingBottom="80dp">
 
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:contentDescription="Search Icon"
-                android:src="@drawable/ic_search"
-                app:tint="#888888" />
+            <!-- 1. KHU VỰC "POPULAR" (SLIDER NỔI BẬT DẠNG CYCLE) -->
+            <RelativeLayout
+                android:id="@+id/layoutPopularSlider"
+                android:layout_width="match_parent"
+                android:layout_height="250dp"
+                android:layout_marginTop="8dp">
 
-            <!-- Ô nhập từ khóa tìm kiếm trực tiếp -->
-            <EditText
-                android:id="@+id/etSearchQuery"
-                android:layout_width="0dp"
+                <androidx.viewpager2.widget.ViewPager2
+                    android:id="@+id/viewPagerPopular"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <!-- Nút lướt qua lại cho Slider (nếu muốn) -->
+                <ImageButton
+                    android:id="@+id/btnPrevPopular"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_circle_translucent"
+                    android:src="@android:drawable/ic_media_previous"
+                    app:tint="@android:color/white" />
+
+                <ImageButton
+                    android:id="@+id/btnNextPopular"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/bg_circle_translucent"
+                    android:src="@android:drawable/ic_media_next"
+                    app:tint="@android:color/white" />
+
+            </RelativeLayout>
+
+            <!-- 2. LABEL "RECENTLY ADDED / CONTINUE WATCHING" -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:background="@null"
-                android:hint="Tìm tên phim hoặc nội dung mô tả..."
-                android:imeOptions="actionSearch"
-                android:inputType="text"
-                android:padding="10dp"
-                android:textColor="@android:color/white"
-                android:textColorHint="#777777"
-                android:textSize="14sp" />
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp">
 
-            <!-- Nút Xóa từ khóa tìm kiếm -->
-            <ImageButton
-                android:id="@+id/btnClearSearch"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Clear search"
-                android:padding="6dp"
-                android:src="@drawable/ic_close"
-                app:tint="#888888" />
+                <View
+                    android:layout_width="3dp"
+                    android:layout_height="18dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="#E50914" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Recently Added"
+                    android:textColor="@android:color/white"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- 3. DANH SÁCH PHIM DẠNG LƯỚT NGANG HOẶC DỌC (RECYCLERVIEW) -->
+            <!-- Chú ý: Ở đây tôi để Cuộn Dọc để hiển thị lưới 2 cột cho đẹp -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvVideos"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:paddingHorizontal="12dp"
+                tools:listitem="@layout/item_video" />
 
         </LinearLayout>
-
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- RecyclerView danh sách các phim/video -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvVideos"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginTop="4dp"
-        android:clipToPadding="false"
-        android:paddingBottom="88dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/cardSearch"
-        tools:listitem="@layout/item_video" />
+    </androidx.core.widget.NestedScrollView>
 
     <!-- Nút Thêm Video mới (Nút nổi Red Accent cho Admin) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAddVideo"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
         android:layout_margin="24dp"
         android:contentDescription="Thêm Video mới"
         android:src="@drawable/ic_add"
         android:visibility="gone"
         app:backgroundTint="#E50914"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
         app:tint="@android:color/white"
         tools:visibility="visible" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
