@@ -1,5 +1,6 @@
 package com.example.pgck2;
 
+import android.app.DownloadManager;
 import android.app.PendingIntent;
 import android.app.PictureInPictureParams;
 import android.app.RemoteAction;
@@ -12,6 +13,7 @@ import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Rational;
 import android.view.View;
 import android.webkit.WebChromeClient;
@@ -38,7 +40,7 @@ import java.util.Collections;
 
 /**
  * PlayerActivity hiển thị trình phát video đa năng (ExoPlayer + YouTube WebView)
- * tích hợp nút Tua ±10s, Chọn Độ phân giải, Mô tả phim và Chế độ PiP (Picture-in-Picture).
+ * tích hợp nút Tua ±10s đặt ngang hàng với nút Play/Pause, Chọn Độ phân giải, Tải video và Chế độ PiP.
  */
 public class PlayerActivity extends AppCompatActivity {
 
@@ -50,19 +52,17 @@ public class PlayerActivity extends AppCompatActivity {
     private WebView wvYouTubePlayer;
     private RelativeLayout layoutTopBar;
     private View layoutSeekControls;
-    private View layoutInfoPanel;
     private ImageButton btnExitPlayer;
+    private ImageButton btnDownloadVideo;
     private ImageButton btnQuality;
     private ImageButton btnPip;
     private ImageButton btnRewind10;
     private ImageButton btnForward10;
     private TextView tvPlayerVideoTitle;
-    private TextView tvPlayerDesc;
 
     private ExoPlayer player;
     private String videoUrl;
     private String videoTitle;
-    private String videoDesc;
     private boolean isYouTube = false;
 
     // Hằng số điều khiển PiP
@@ -100,17 +100,6 @@ public class PlayerActivity extends AppCompatActivity {
                 videoTitle = intent.getStringExtra(EXTRA_VIDEO_TITLE);
                 tvPlayerVideoTitle.setText(videoTitle);
             }
-            if (intent.hasExtra(EXTRA_VIDEO_DESC)) {
-                videoDesc = intent.getStringExtra(EXTRA_VIDEO_DESC);
-                if (videoDesc != null && !videoDesc.trim().isEmpty()) {
-                    tvPlayerDesc.setText(videoDesc);
-                    layoutInfoPanel.setVisibility(View.VISIBLE);
-                } else {
-                    layoutInfoPanel.setVisibility(View.GONE);
-                }
-            } else {
-                layoutInfoPanel.setVisibility(View.GONE);
-            }
         }
 
         setupControlListeners();
@@ -126,14 +115,13 @@ public class PlayerActivity extends AppCompatActivity {
         wvYouTubePlayer = findViewById(R.id.wvYouTubePlayer);
         layoutTopBar = findViewById(R.id.layoutTopBar);
         layoutSeekControls = findViewById(R.id.layoutSeekControls);
-        layoutInfoPanel = findViewById(R.id.layoutInfoPanel);
         btnExitPlayer = findViewById(R.id.btnExitPlayer);
+        btnDownloadVideo = findViewById(R.id.btnDownloadVideo);
         btnQuality = findViewById(R.id.btnQuality);
         btnPip = findViewById(R.id.btnPip);
         btnRewind10 = findViewById(R.id.btnRewind10);
         btnForward10 = findViewById(R.id.btnForward10);
         tvPlayerVideoTitle = findViewById(R.id.tvPlayerVideoTitle);
-        tvPlayerDesc = findViewById(R.id.tvPlayerDesc);
 
         // Mặc định ẩn nút tua cho tới khi chạm màn hình
         if (layoutSeekControls != null) {
@@ -145,7 +133,12 @@ public class PlayerActivity extends AppCompatActivity {
         // Nút thoát
         btnExitPlayer.setOnClickListener(v -> finish());
 
-        // Nút tua 10 giây
+        // Nút Tải video phim về máy
+        if (btnDownloadVideo != null) {
+            btnDownloadVideo.setOnClickListener(v -> downloadVideo());
+        }
+
+        // Nút tua 10 giây (-10s và +10s nằm ngang hàng với nút Play/Pause chính giữa)
         if (btnRewind10 != null) {
             btnRewind10.setOnClickListener(v -> seekVideoRelative(-10));
         }
@@ -170,10 +163,43 @@ public class PlayerActivity extends AppCompatActivity {
             if (layoutTopBar != null) {
                 layoutTopBar.setVisibility(visibility);
             }
-            if (layoutInfoPanel != null && videoDesc != null && !videoDesc.trim().isEmpty()) {
-                layoutInfoPanel.setVisibility(visibility);
-            }
         });
+    }
+
+    /**
+     * Tải video phim về máy bằng Android DownloadManager.
+     */
+    private void downloadVideo() {
+        if (videoUrl == null || videoUrl.isEmpty()) {
+            Toast.makeText(this, "Không có URL video để tải!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (isYouTube) {
+            Toast.makeText(this, "Video YouTube không hỗ trợ tải trực tiếp. Vui lòng xem online!", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        try {
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(videoUrl));
+            String fileName = (videoTitle != null && !videoTitle.trim().isEmpty() ? videoTitle : "phim_" + System.currentTimeMillis()) + ".mp4";
+            fileName = fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
+
+            request.setTitle("Đang tải: " + (videoTitle != null ? videoTitle : "Phim"));
+            request.setDescription("Đang tải file video về máy...");
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_MOVIES, fileName);
+            request.setAllowedOverMetered(true);
+            request.setAllowedOverRoaming(true);
+
+            DownloadManager downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+            if (downloadManager != null) {
+                downloadManager.enqueue(request);
+                Toast.makeText(this, "Bắt đầu tải video: " + fileName, Toast.LENGTH_LONG).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Lỗi khi tải video: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void setupPlayer() {
@@ -382,13 +408,9 @@ public class PlayerActivity extends AppCompatActivity {
         if (isInPictureInPictureMode) {
             layoutTopBar.setVisibility(View.GONE);
             if (layoutSeekControls != null) layoutSeekControls.setVisibility(View.GONE);
-            if (layoutInfoPanel != null) layoutInfoPanel.setVisibility(View.GONE);
             playerView.setUseController(false);
         } else {
             layoutTopBar.setVisibility(View.VISIBLE);
-            if (layoutInfoPanel != null && videoDesc != null && !videoDesc.trim().isEmpty()) {
-                layoutInfoPanel.setVisibility(View.VISIBLE);
-            }
             playerView.setUseController(true);
         }
     }

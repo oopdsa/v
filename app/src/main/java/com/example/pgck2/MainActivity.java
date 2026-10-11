@@ -183,6 +183,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initViews() {
+
         rvVideos = findViewById(R.id.rvVideos);
         btnToggleAdmin = findViewById(R.id.btnToggleAdmin);
         btnToggleSearch = findViewById(R.id.btnToggleSearch);
