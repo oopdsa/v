@@ -7,7 +7,7 @@
     android:background="@android:color/black"
     tools:context=".PlayerActivity">
 
-    <!-- Trình phát video Media3 ExoPlayer PlayerView (Đã ẩn các nút tua mặc định) -->
+    <!-- Trình phát video Media3 ExoPlayer PlayerView -->
     <androidx.media3.ui.PlayerView
         android:id="@+id/playerView"
         android:layout_width="0dp"
