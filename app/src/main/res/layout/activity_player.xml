@@ -34,7 +34,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Thanh Điều Khiển Phía Trên (Top Control Bar) -->
+    <!-- Thanh Điều Khiển Phía Trên (Top Control Bar - Hiện khi tap màn hình) -->
     <RelativeLayout
         android:id="@+id/layoutTopBar"
         android:layout_width="0dp"
@@ -98,14 +98,28 @@
             android:layout_height="40dp"
             android:layout_centerVertical="true"
             android:layout_marginEnd="8dp"
-            android:layout_toStartOf="@id/btnQuality"
+            android:layout_toStartOf="@id/btnSpeed"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Thu nhỏ PiP"
             android:padding="8dp"
             android:src="@drawable/ic_pip"
             app:tint="@android:color/white" />
 
-        <!-- Nút Chỉnh Độ Phân Giải Video (Quality / Resolution Button) -->
+        <!-- Nút Chỉnh Tốc Độ Phát Video (Nằm cạnh nút bánh răng / chất lượng) -->
+        <ImageButton
+            android:id="@+id/btnSpeed"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_centerVertical="true"
+            android:layout_marginEnd="8dp"
+            android:layout_toStartOf="@id/btnQuality"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Tốc độ phát"
+            android:padding="8dp"
+            android:src="@drawable/ic_speed"
+            app:tint="@android:color/white" />
+
+        <!-- Nút Chỉnh Độ Phân Giải Video (Quality / HD / Bánh răng Button) -->
         <ImageButton
             android:id="@+id/btnQuality"
             android:layout_width="40dp"
