@@ -20,7 +20,7 @@ import java.util.List;
 
 /**
  * Adapter quản lý hiển thị danh sách video trong RecyclerView.
- * Hỗ trợ hiển thị Tiêu đề, Mô tả và nút Sửa / Xóa khi ở Chế độ Admin.
+ * Hỗ trợ hiển thị Tiêu đề, Thể loại, Mô tả và nút Sửa / Xóa khi ở Chế độ Admin.
  */
 public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHolder> {
 
@@ -89,6 +89,15 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
         // Hiển thị tiêu đề
         holder.tvTitle.setText(video.getTitle());
 
+        // Hiển thị danh sách thể loại phim
+        String genresText = video.getGenresString();
+        if (genresText != null && !genresText.trim().isEmpty() && !genresText.equals("Chưa phân loại")) {
+            holder.tvGenres.setText("🏷️ " + genresText);
+            holder.tvGenres.setVisibility(View.VISIBLE);
+        } else {
+            holder.tvGenres.setVisibility(View.GONE);
+        }
+
         // Hiển thị mô tả ngắn (nếu không có thì ẩn đi)
         if (video.getDescription() != null && !video.getDescription().trim().isEmpty()) {
             holder.tvDescription.setText(video.getDescription());
@@ -111,7 +120,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             holder.layoutAdminActions.setVisibility(View.GONE);
         }
 
-        // Bắt sự kiện click xem video (Chuyển sang PlayerActivity đồng thời gửi tiêu đề, url, mô tả)
+        // Bắt sự kiện click xem video (Chuyển sang PlayerActivity đồng thời gửi tiêu đề, url, mô tả, thể loại)
         holder.itemView.setOnClickListener(v -> {
             if (clickListener != null) {
                 clickListener.onVideoClick(video);
@@ -120,6 +129,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
                 intent.putExtra(PlayerActivity.EXTRA_VIDEO_URL, video.getVideoUrl());
                 intent.putExtra(PlayerActivity.EXTRA_VIDEO_TITLE, video.getTitle());
                 intent.putExtra(PlayerActivity.EXTRA_VIDEO_DESC, video.getDescription());
+                intent.putExtra("extra_video_genres", video.getGenresString());
                 context.startActivity(intent);
             }
         });
@@ -149,6 +159,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
     public static class VideoViewHolder extends RecyclerView.ViewHolder {
         ImageView imgThumbnail;
         TextView tvTitle;
+        TextView tvGenres;
         TextView tvDescription;
         LinearLayout layoutAdminActions;
         ImageButton btnEdit;
@@ -158,6 +169,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             super(itemView);
             imgThumbnail = itemView.findViewById(R.id.imgThumbnail);
             tvTitle = itemView.findViewById(R.id.tvTitle);
+            tvGenres = itemView.findViewById(R.id.tvGenres);
             tvDescription = itemView.findViewById(R.id.tvDescription);
             layoutAdminActions = itemView.findViewById(R.id.layoutAdminActions);
             btnEdit = itemView.findViewById(R.id.btnEditVideo);

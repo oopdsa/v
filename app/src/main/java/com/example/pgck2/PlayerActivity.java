@@ -16,10 +16,12 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.util.Rational;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -29,6 +31,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.widget.NestedScrollView;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.PlaybackParameters;
@@ -40,14 +43,8 @@ import androidx.media3.ui.PlayerView;
 import java.util.Collections;
 
 /**
- * PlayerActivity là Activity phát video trực tuyến đa năng trong ứng dụng PGCK2.
- * Hỗ trợ các tính năng chính:
- * 1. Trình phát kép: ExoPlayer (phát stream MP4/HLS) và WebView (phát nhúng IFrame YouTube).
- * 2. Nút Tua ±10 giây (-10s / +10s) tự động ẩn/hiện đồng bộ khi chạm màn hình.
- * 3. Nút Chỉnh Độ Phân Giải (Resolution Selector: 1080p, 720p, 480p, 360p, Tự động).
- * 4. Nút Chỉnh Tốc Độ Phát Video (PlaybackParameters: 0.5x, 0.75x, 1.0x mặc định, 1.5x, 2.0x) ở góc phải dưới.
- * 5. Nút Tải Video Phim về máy sử dụng Android DownloadManager.
- * 6. Tính năng Picture-in-Picture (PiP) tự động thu nhỏ video khi bấm Home hoặc chuyển ứng dụng.
+ * PlayerActivity hiển thị Màn hình Chi Tiết & Trình phát video đa năng (ExoPlayer + YouTube WebView)
+ * tích hợp nút Tua ±10s, Phóng to toàn màn hình, Chọn Độ phân giải, Tải video, Mô tả phim và Chế độ PiP.
  */
 public class PlayerActivity extends AppCompatActivity {
 
@@ -57,24 +54,34 @@ public class PlayerActivity extends AppCompatActivity {
     public static final String EXTRA_VIDEO_DESC = "extra_video_desc";     // Nội dung mô tả phim
 
     // Ánh xạ các View thành phần giao diện
+    private FrameLayout framePlayerContainer;  // Khung chứa trình phát video
     private PlayerView playerView;             // Trình phát ExoPlayer cho video MP4
     private WebView wvYouTubePlayer;           // Webview phát nhúng IFrame cho video YouTube
     private RelativeLayout layoutTopBar;       // Thanh điều khiển phía trên (Header Top Bar)
     private View layoutSeekControls;           // Khung chứa 2 nút tua lùi -10s và tua tới +10s
+    private NestedScrollView scrollViewMovieDetail; // Khung thông tin mô tả chi tiết cuộn bên dưới
+    private TextView tvDetailTitle;            // Tiêu đề phim bên dưới
+    private TextView tvDetailGenres;           // Danh sách thể loại phim bên dưới
+    private TextView tvDetailDesc;             // Mô tả đầy đủ phim bên dưới
+
     private ImageButton btnExitPlayer;         // Nút thoát / đóng màn hình xem phim
     private ImageButton btnDownloadVideo;      // Nút tải video về máy
     private ImageButton btnQuality;            // Nút mở Dialog chọn độ phân giải
     private ImageButton btnSpeed;              // Nút mở Dialog chọn tốc độ phát (Playback Speed)
     private ImageButton btnPip;                // Nút thu nhỏ video thành cửa sổ nổi PiP
+    private ImageButton btnMaximize;           // Nút Phóng to / Thu nhỏ màn hình phát
     private ImageButton btnRewind10;           // Nút tua lùi 10 giây (-10s)
     private ImageButton btnForward10;          // Nút tua tới 10 giây (+10s)
-    private TextView tvPlayerVideoTitle;       // TextView hiển thị tiêu đề phim
+    private TextView tvPlayerVideoTitle;       // TextView hiển thị tiêu đề phim trên Header
 
     // Các biến trạng thái logic
     private ExoPlayer player;                  // Đối tượng ExoPlayer Media3
     private String videoUrl;                   // URL video nhận từ Intent
     private String videoTitle;                 // Tiêu đề phim nhận từ Intent
+    private String videoDesc;                  // Mô tả phim nhận từ Intent
+    private String videoGenres;                // Thể loại phim nhận từ Intent
     private boolean isYouTube = false;         // Cờ đánh dấu video hiện tại có phải là YouTube hay không
+    private boolean isFullscreen = false;      // Cờ đánh dấu màn hình đang ở chế độ phóng to toàn màn hình
 
     // Hằng số đăng ký Receiver điều khiển PiP
     private static final String ACTION_MEDIA_CONTROL = "media_control_action"; // Hành động Broadcast PiP
@@ -89,11 +96,11 @@ public class PlayerActivity extends AppCompatActivity {
             if (intent == null || !ACTION_MEDIA_CONTROL.equals(intent.getAction())) return;
             if (player != null) {
                 if (player.isPlaying()) {
-                    player.pause(); // Nếu đang phát thì tạm dừng
+                    player.pause();
                 } else {
-                    player.play();  // Nếu đang dừng thì phát tiếp
+                    player.play();
                 }
-                updatePipParams();  // Cập nhật lại icon Play/Pause trên nút PiP
+                updatePipParams();
             }
         }
     };
@@ -106,7 +113,7 @@ public class PlayerActivity extends AppCompatActivity {
         // 1. Ánh xạ toàn bộ các View từ layout activity_player.xml
         initViews();
 
-        // 2. Nhận dữ liệu truyền sang từ Intent (videoUrl, videoTitle)
+        // 2. Nhận dữ liệu truyền sang từ Intent (videoUrl, videoTitle, videoDesc, videoGenres)
         Intent intent = getIntent();
         if (intent != null) {
             if (intent.hasExtra(EXTRA_VIDEO_URL)) {
@@ -115,6 +122,17 @@ public class PlayerActivity extends AppCompatActivity {
             if (intent.hasExtra(EXTRA_VIDEO_TITLE)) {
                 videoTitle = intent.getStringExtra(EXTRA_VIDEO_TITLE);
                 tvPlayerVideoTitle.setText(videoTitle);
+                tvDetailTitle.setText(videoTitle);
+            }
+            if (intent.hasExtra(EXTRA_VIDEO_DESC)) {
+                videoDesc = intent.getStringExtra(EXTRA_VIDEO_DESC);
+                tvDetailDesc.setText(videoDesc != null && !videoDesc.trim().isEmpty() ? videoDesc : "Chưa có nội dung mô tả cho phim này.");
+            }
+            if (intent.hasExtra("extra_video_genres")) {
+                videoGenres = intent.getStringExtra("extra_video_genres");
+                tvDetailGenres.setText("🏷️ Thể loại: " + (videoGenres != null && !videoGenres.isEmpty() ? videoGenres : "Chưa phân loại"));
+            } else {
+                tvDetailGenres.setText("🏷️ Thể loại: Chưa phân loại");
             }
         }
 
@@ -133,25 +151,29 @@ public class PlayerActivity extends AppCompatActivity {
      * Ánh xạ tất cả các View thành phần từ layout XML.
      */
     private void initViews() {
+        framePlayerContainer = findViewById(R.id.framePlayerContainer);
         playerView = findViewById(R.id.playerView);
         wvYouTubePlayer = findViewById(R.id.wvYouTubePlayer);
         layoutTopBar = findViewById(R.id.layoutTopBar);
         layoutSeekControls = findViewById(R.id.layoutSeekControls);
+        scrollViewMovieDetail = findViewById(R.id.scrollViewMovieDetail);
+        tvDetailTitle = findViewById(R.id.tvDetailTitle);
+        tvDetailGenres = findViewById(R.id.tvDetailGenres);
+        tvDetailDesc = findViewById(R.id.tvDetailDesc);
+
         btnExitPlayer = findViewById(R.id.btnExitPlayer);
         btnDownloadVideo = findViewById(R.id.btnDownloadVideo);
         btnQuality = findViewById(R.id.btnQuality);
         btnSpeed = findViewById(R.id.btnSpeed);
         btnPip = findViewById(R.id.btnPip);
+        btnMaximize = findViewById(R.id.btnMaximize);
         btnRewind10 = findViewById(R.id.btnRewind10);
         btnForward10 = findViewById(R.id.btnForward10);
         tvPlayerVideoTitle = findViewById(R.id.tvPlayerVideoTitle);
 
-        // Mặc định ẩn nút tua và nút tốc độ phát cho tới khi người dùng chạm vào màn hình
+        // Mặc định ẩn nút tua cho tới khi người dùng chạm vào màn hình
         if (layoutSeekControls != null) {
             layoutSeekControls.setVisibility(View.GONE);
-        }
-        if (btnSpeed != null) {
-            btnSpeed.setVisibility(View.GONE);
         }
     }
 
@@ -180,18 +202,23 @@ public class PlayerActivity extends AppCompatActivity {
         // Nút chọn độ phân giải
         btnQuality.setOnClickListener(v -> showResolutionDialog());
 
-        // Nút chỉnh tốc độ phát ở góc phải dưới
+        // Nút chỉnh tốc độ phát
         if (btnSpeed != null) {
             btnSpeed.setOnClickListener(v -> showSpeedDialog());
+        }
+
+        // Nút Bật/Tắt Phóng to toàn màn hình (Fullscreen Toggle)
+        if (btnMaximize != null) {
+            btnMaximize.setOnClickListener(v -> toggleFullscreenMode());
         }
 
         // Nút bấm kích hoạt PiP thủ công
         btnPip.setOnClickListener(v -> enterPipMode());
 
-        // Đồng bộ ẩn/hiện cụm nút tua 10s, thanh Header và Nút Tốc độ phát theo thao tác chạm màn hình
+        // Đồng bộ ẩn/hiện cụm nút tua 10s và thanh Header theo thao tác chạm màn hình của PlayerView
         playerView.setControllerVisibilityListener((PlayerView.ControllerVisibilityListener) visibility -> {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode()) {
-                return; // Nếu đang ở chế độ PiP thu nhỏ thì giữ nguyên giao diện ẩn
+                return;
             }
             if (layoutSeekControls != null) {
                 layoutSeekControls.setVisibility(visibility);
@@ -199,10 +226,30 @@ public class PlayerActivity extends AppCompatActivity {
             if (layoutTopBar != null) {
                 layoutTopBar.setVisibility(visibility);
             }
-            if (btnSpeed != null) {
-                btnSpeed.setVisibility(visibility);
-            }
         });
+    }
+
+    /**
+     * Chuyển đổi giữa chế độ Xem Chi Tiết Phim (Có thông tin bên dưới) và Phóng To Toàn Màn Hình.
+     */
+    private void toggleFullscreenMode() {
+        isFullscreen = !isFullscreen;
+        ViewGroup.LayoutParams params = framePlayerContainer.getLayoutParams();
+
+        if (isFullscreen) {
+            // Chuyển sang chế độ Phóng To Toàn Màn Hình
+            params.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            framePlayerContainer.setLayoutParams(params);
+            scrollViewMovieDetail.setVisibility(View.GONE);
+            Toast.makeText(this, "Chế độ Toàn Màn Hình", Toast.LENGTH_SHORT).show();
+        } else {
+            // Quay về chế độ Xem Chi Tiết Phim
+            int defaultHeightPx = (int) (230 * getResources().getDisplayMetrics().density);
+            params.height = defaultHeightPx;
+            framePlayerContainer.setLayoutParams(params);
+            scrollViewMovieDetail.setVisibility(View.VISIBLE);
+            Toast.makeText(this, "Chế độ Khung Chi Tiết", Toast.LENGTH_SHORT).show();
+        }
     }
 
     /**
@@ -222,7 +269,7 @@ public class PlayerActivity extends AppCompatActivity {
         try {
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(videoUrl));
             String fileName = (videoTitle != null && !videoTitle.trim().isEmpty() ? videoTitle : "phim_" + System.currentTimeMillis()) + ".mp4";
-            fileName = fileName.replaceAll("[^a-zA-Z0-9._-]", "_"); // Làm sạch tên file
+            fileName = fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
 
             request.setTitle("Đang tải: " + (videoTitle != null ? videoTitle : "Phim"));
             request.setDescription("Đang tải file video về máy...");
@@ -241,9 +288,6 @@ public class PlayerActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Kiểm tra loại video và kích hoạt trình phát tương ứng (ExoPlayer hay YouTube WebView).
-     */
     private void setupPlayer() {
         if (videoUrl == null || videoUrl.isEmpty()) {
             Toast.makeText(this, "Đường dẫn video không hợp lệ!", Toast.LENGTH_SHORT).show();
@@ -261,17 +305,10 @@ public class PlayerActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Tua video tới hoặc lùi một khoảng thời gian (tính bằng giây).
-     *
-     * @param secondsDelta Số giây cần tua (+10 cho tới, -10 cho lùi)
-     */
     private void seekVideoRelative(int secondsDelta) {
         if (isYouTube) {
-            // Đối với video YouTube: Gọi hàm JavaScript seekRelative trong WebView
             wvYouTubePlayer.evaluateJavascript("seekRelative(" + secondsDelta + ");", null);
         } else {
-            // Đối với ExoPlayer: Tính toán lại vị trí phát
             if (player != null) {
                 long currentPos = player.getCurrentPosition();
                 long targetPos = currentPos + (secondsDelta * 1000L);
@@ -287,9 +324,6 @@ public class PlayerActivity extends AppCompatActivity {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
-    /**
-     * Hiển thị Dialog cho phép người dùng chọn độ phân giải video (1080p, 720p, 480p, 360p, Auto).
-     */
     private void showResolutionDialog() {
         String[] qualities = {"Tự động (Auto)", "1080p (Full HD)", "720p (HD)", "480p (SD)", "360p (Thấp)"};
         new AlertDialog.Builder(this)
@@ -299,12 +333,6 @@ public class PlayerActivity extends AppCompatActivity {
                 .show();
     }
 
-    /**
-     * Thay đổi chất lượng/độ phân giải của video phát.
-     *
-     * @param optionIndex Chỉ số lựa chọn (0: Auto, 1: 1080p, 2: 720p, 3: 480p, 4: 360p)
-     * @param optionLabel Nhãn chất lượng hiển thị
-     */
     private void changeVideoResolution(int optionIndex, String optionLabel) {
         if (isYouTube) {
             String ytQuality = "auto";
@@ -320,19 +348,19 @@ public class PlayerActivity extends AppCompatActivity {
                 TrackSelectionParameters.Builder builder = player.getTrackSelectionParameters().buildUpon();
                 switch (optionIndex) {
                     case 0:
-                        builder.clearVideoSizeConstraints(); // Bỏ giới hạn (Tự động)
+                        builder.clearVideoSizeConstraints();
                         break;
                     case 1:
-                        builder.setMaxVideoSize(1920, 1080); // Giới hạn Full HD 1080p
+                        builder.setMaxVideoSize(1920, 1080);
                         break;
                     case 2:
-                        builder.setMaxVideoSize(1280, 720);  // Giới hạn HD 720p
+                        builder.setMaxVideoSize(1280, 720);
                         break;
                     case 3:
-                        builder.setMaxVideoSize(854, 480);   // Giới hạn SD 480p
+                        builder.setMaxVideoSize(854, 480);
                         break;
                     case 4:
-                        builder.setMaxVideoSize(640, 360);   // Giới hạn Thấp 360p
+                        builder.setMaxVideoSize(640, 360);
                         break;
                 }
                 player.setTrackSelectionParameters(builder.build());
@@ -341,12 +369,9 @@ public class PlayerActivity extends AppCompatActivity {
         Toast.makeText(this, "Đã chọn chất lượng: " + optionLabel, Toast.LENGTH_SHORT).show();
     }
 
-    /**
-     * Hiển thị Dialog chọn Tốc độ phát video (0.5x, 0.75x, 1.0x mặc định, 1.5x, 2.0x).
-     */
     private void showSpeedDialog() {
         String[] speedOptions = {"0.5x (Chậm)", "0.75x (Chậm vừa)", "1.0x (Mặc định)", "1.5x (Nhanh)", "2.0x (Nhanh 2x)"};
-        float[] speedValues = {0.5f, 0.75f, 1.0f, 1.5f, 2.0f}; // <<<
+        float[] speedValues = {0.5f, 0.75f, 1.0f, 1.5f, 2.0f};
 
         new AlertDialog.Builder(this)
                 .setTitle("Chọn tốc độ phát video")
@@ -355,21 +380,12 @@ public class PlayerActivity extends AppCompatActivity {
                 .show();
     }
 
-    /**
-     * Thay đổi tốc độ phát video sử dụng PlaybackParameters (cho ExoPlayer) hoặc JavaScript setPlaybackRate (cho YouTube).
-     *
-     * @param optionIndex Chỉ số lựa chọn tốc độ
-     * @param speedLabel  Nhãn hiển thị tốc độ (vd: "1.5x (Nhanh)")
-     * @param speedValue  Giá trị tốc độ float (vd: 0.5f, 1.0f, 1.5f, 2.0f)
-     */
     private void changePlaybackSpeed(int optionIndex, String speedLabel, float speedValue) {
         if (isYouTube) {
-            // Đặt tốc độ phát trên YouTube IFrame Player thông qua JavaScript API
             if (wvYouTubePlayer != null) {
                 wvYouTubePlayer.evaluateJavascript("if(player && player.setPlaybackRate){ player.setPlaybackRate(" + speedValue + "); }", null);
             }
         } else {
-            // Đặt tốc độ phát trên ExoPlayer bằng PlaybackParameters
             if (player != null) {
                 PlaybackParameters param = new PlaybackParameters(speedValue);
                 player.setPlaybackParameters(param);
@@ -378,11 +394,6 @@ public class PlayerActivity extends AppCompatActivity {
         Toast.makeText(this, "Tốc độ phát: " + speedLabel, Toast.LENGTH_SHORT).show();
     }
 
-    /**
-     * Cấu hình và phát video YouTube trong WebView sử dụng HTML5 IFrame API.
-     *
-     * @param youtubeId Mã định danh video YouTube
-     */
     private void playYouTubeVideo(String youtubeId) {
         playerView.setVisibility(View.GONE);
         wvYouTubePlayer.setVisibility(View.VISIBLE);
@@ -421,9 +432,6 @@ public class PlayerActivity extends AppCompatActivity {
         wvYouTubePlayer.loadDataWithBaseURL("https://www.youtube.com", iframeHtml, "text/html", "utf-8", null);
     }
 
-    /**
-     * Khởi tạo và phát video MP4/HLS bằng AndroidX Media3 ExoPlayer.
-     */
     private void playDirectMediaVideo() {
         wvYouTubePlayer.setVisibility(View.GONE);
         playerView.setVisibility(View.VISIBLE);
@@ -455,9 +463,6 @@ public class PlayerActivity extends AppCompatActivity {
     // XỬ LÝ CHẾ ĐỘ PICTURE-IN-PICTURE (PiP)
     // =========================================================================
 
-    /**
-     * Kích hoạt chế độ cửa sổ thu nhỏ PiP với tỷ lệ khung hình 16:9.
-     */
     private void enterPipMode() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Rational aspectRatio = new Rational(16, 9);
@@ -474,9 +479,6 @@ public class PlayerActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Cập nhật các thông số và icon Play/Pause cho cửa sổ PiP thu nhỏ.
-     */
     private void updatePipParams() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode()) {
             Rational aspectRatio = new Rational(16, 9);
@@ -493,9 +495,6 @@ public class PlayerActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Tạo nút RemoteAction Play/Pause hiển thị trên cửa sổ PiP thu nhỏ.
-     */
     private RemoteAction createPlayPauseAction() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             boolean isPlaying = player != null && player.isPlaying();
@@ -514,9 +513,6 @@ public class PlayerActivity extends AppCompatActivity {
         return null;
     }
 
-    /**
-     * Tự động chuyển sang chế độ PiP khi người dùng bấm phím Home hoặc thoát app.
-     */
     @Override
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
@@ -527,26 +523,23 @@ public class PlayerActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Lắng nghe sự kiện khi ứng dụng chuyển đổi trạng thái vào/ra chế độ PiP.
-     */
     @Override
     public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
         if (isInPictureInPictureMode) {
             layoutTopBar.setVisibility(View.GONE);
             if (layoutSeekControls != null) layoutSeekControls.setVisibility(View.GONE);
-            if (btnSpeed != null) btnSpeed.setVisibility(View.GONE);
+            scrollViewMovieDetail.setVisibility(View.GONE);
             playerView.setUseController(false);
         } else {
             layoutTopBar.setVisibility(View.VISIBLE);
+            if (!isFullscreen) {
+                scrollViewMovieDetail.setVisibility(View.VISIBLE);
+            }
             playerView.setUseController(true);
         }
     }
 
-    /**
-     * Dừng và giải phóng tài nguyên phần cứng của ExoPlayer và WebView.
-     */
     private void releasePlayer() {
         if (player != null) {
             player.release();

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -46,6 +47,53 @@
             android:lines="3" />
 
     </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Chọn Thể Loại Phim (Genres) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvSelectedGenres"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:textColor="#333333"
+            android:textSize="13sp"
+            tools:text="Thể loại đã chọn: Hành Động, Kinh Dị" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSelectGenres"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:text="🏷️ Chọn Thể Loại"
+                android:textSize="12sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnManageGenres"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:text="⚙️ Tạo / Xóa Thể Loại"
+                android:textColor="#E50914"
+                android:textSize="12sp"
+                app:strokeColor="#E50914" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
     <!-- CheckBox chọn Phim Nổi Bật (Popular Slider) -->
     <com.google.android.material.checkbox.MaterialCheckBox

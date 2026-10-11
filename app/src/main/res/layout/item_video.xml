@@ -72,6 +72,24 @@
             app:layout_constraintTop_toBottomOf="@id/imgThumbnail"
             tools:text="Big Buck Bunny 4K Movie" />
 
+        <!-- Nhãn Thể Loại Phim (Genres Badge) -->
+        <TextView
+            android:id="@+id/tvGenres"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginEnd="14dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#E50914"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvTitle"
+            tools:text="🏷️ Hoạt Hình, Hài Hước, Phiêu Lưu" />
+
         <!-- Mô Tả Ngắn Video -->
         <TextView
             android:id="@+id/tvDescription"
@@ -86,7 +104,7 @@
             android:textSize="13sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvTitle"
+            app:layout_constraintTop_toBottomOf="@id/tvGenres"
             tools:text="Một bộ phim hoạt hình ngắn 3D nổi tiếng kể về chú thỏ khổng lồ cùng cuộc phiêu lưu thú vị trong rừng xanh." />
 
         <!-- Khung chứa nút Sửa / Xóa cho Chế độ Admin -->

@@ -8,11 +8,13 @@
     android:background="#121212"
     tools:context=".MainActivity">
 
+    <!-- AppBarLayout giữ nguyên màu đen #121212 khi cuộn xuống (app:liftOnScroll="false") -->
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#121212"
-        app:elevation="0dp">
+        app:elevation="0dp"
+        app:liftOnScroll="false">
 
         <!-- HEADER: Logo, Search, Nút Đổi Chế Độ -->
         <RelativeLayout
@@ -74,7 +76,7 @@
                 app:tint="@android:color/white" />
         </RelativeLayout>
 
-        <!-- Thanh Tìm Kiếm Đẳng Cấp -->
+        <!-- Thanh Tìm Kiếm & Bộ Lọc Thể Loại 3 Trạng Thái (Yes / Blacklist / No) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardSearch"
             android:layout_width="match_parent"
@@ -93,39 +95,69 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="4dp">
+                android:orientation="vertical"
+                android:padding="10dp">
 
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_search"
-                    app:tint="#888888" />
-
-                <EditText
-                    android:id="@+id/etSearchQuery"
-                    android:layout_width="0dp"
+                <!-- 1. Thanh Ô Nhập Tìm Kiếm Từ Khóa -->
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="@null"
-                    android:hint="Tìm phim..."
-                    android:imeOptions="actionSearch"
-                    android:inputType="text"
-                    android:padding="10dp"
-                    android:textColor="@android:color/white"
-                    android:textColorHint="#777777"
-                    android:textSize="14sp" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-                <ImageButton
-                    android:id="@+id/btnClearSearch"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:padding="6dp"
-                    android:src="@drawable/ic_close"
-                    app:tint="#888888" />
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_search"
+                        app:tint="#888888" />
+
+                    <EditText
+                        android:id="@+id/etSearchQuery"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@null"
+                        android:hint="Tìm theo tên hoặc mô tả phim..."
+                        android:imeOptions="actionSearch"
+                        android:inputType="text"
+                        android:padding="8dp"
+                        android:textColor="@android:color/white"
+                        android:textColorHint="#777777"
+                        android:textSize="14sp" />
+
+                    <ImageButton
+                        android:id="@+id/btnClearSearch"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:padding="6dp"
+                        android:src="@drawable/ic_close"
+                        app:tint="#888888" />
+                </LinearLayout>
+
+                <!-- 2. Hướng dẫn Lọc Thể Loại (3 Trạng Thái) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="4dp"
+                    android:text="Lọc thể loại: [Bình thường] ➔ [✓ Bắt buộc có] ➔ [✕ Cấm/Blacklist]"
+                    android:textColor="#AAAAAA"
+                    android:textSize="11sp" />
+
+                <!-- 3. Danh Sách Thể Loại Cuộn Ngang (3-State Chips) -->
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none">
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chipGroupGenresFilter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:singleLine="true" />
+                </HorizontalScrollView>
+
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </com.google.android.material.appbar.AppBarLayout>
@@ -154,7 +186,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent" />
 
-                <!-- Nút lướt qua lại cho Slider (nếu muốn) -->
+                <!-- Nút lướt qua lại cho Slider (Ẩn đi cho tàng hình) -->
                 <ImageButton
                     android:id="@+id/btnPrevPopular"
                     android:layout_width="40dp"
@@ -164,6 +196,7 @@
                     android:layout_marginStart="8dp"
                     android:background="@drawable/bg_circle_translucent"
                     android:src="@android:drawable/ic_media_previous"
+                    android:visibility="gone"
                     app:tint="@android:color/white" />
 
                 <ImageButton
@@ -175,6 +208,7 @@
                     android:layout_marginEnd="8dp"
                     android:background="@drawable/bg_circle_translucent"
                     android:src="@android:drawable/ic_media_next"
+                    android:visibility="gone"
                     app:tint="@android:color/white" />
 
             </RelativeLayout>
@@ -205,7 +239,6 @@
             </LinearLayout>
 
             <!-- 3. DANH SÁCH PHIM DẠNG LƯỚT NGANG HOẶC DỌC (RECYCLERVIEW) -->
-            <!-- Chú ý: Ở đây tôi để Cuộn Dọc để hiển thị lưới 2 cột cho đẹp -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvVideos"
                 android:layout_width="match_parent"
