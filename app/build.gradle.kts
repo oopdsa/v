@@ -40,9 +40,12 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:35.0.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-firestore")
-    // Media3 ExoPlayer & UI
+
+    // Media3 ExoPlayer, UI, MediaSession & HLS Adaptive Bitrate
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
+    implementation("androidx.media3:media3-session:1.5.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.5.1")
 
     // Glide for image loading
     implementation(libs.glide)

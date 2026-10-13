@@ -1,163 +1,348 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="20dp">
+    android:layout_height="wrap_content">
 
-    <TextView
-        android:id="@+id/tvDialogTitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:text="Thêm Video Mới"
-        android:textColor="@android:color/black"
-        android:textSize="18sp"
-        android:textStyle="bold" />
-
-    <!-- Tên Phim / Tiêu đề -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        android:hint="Tên Phim / Tiêu đề">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etDialogTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textCapWords" />
-
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <!-- Ô nhập Mô tả video -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        android:hint="Mô tả video">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etDialogDescription"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textMultiLine"
-            android:lines="3" />
-
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <!-- Chọn Thể Loại Phim (Genres) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:padding="16dp">
 
+        <!-- Tiêu đề Dialog Admin -->
         <TextView
-            android:id="@+id/tvSelectedGenres"
+            android:id="@+id/tvDialogTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:textColor="#333333"
-            android:textSize="13sp"
-            tools:text="Thể loại đã chọn: Hành Động, Kinh Dị" />
+            android:layout_marginBottom="14dp"
+            android:text="Thêm Video Mới"
+            android:textColor="#E50914"
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
-        <LinearLayout
+        <!-- 1. CARD 1: THÔNG TIN PHIM CƠ BẢN -->
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="#F8F9FA"
+            app:cardCornerRadius="10dp"
+            app:cardElevation="2dp"
+            app:strokeColor="#DDDDDD"
+            app:strokeWidth="1dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnSelectGenres"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="6dp"
-                android:layout_weight="1"
-                android:text="🏷️ Chọn Thể Loại"
-                android:textSize="12sp" />
+                android:orientation="vertical"
+                android:padding="12dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnManageGenres"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="📝 Thông Tin Phim"
+                    android:textColor="#333333"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <!-- Tên Phim / Tiêu đề -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:hint="Tên Phim / Tiêu đề">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etDialogTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textCapWords" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Ô nhập Mô tả video -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:hint="Mô tả video">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etDialogDescription"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textMultiLine"
+                        android:lines="3" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- CheckBox chọn Phim Nổi Bật (Popular Slider) -->
+                <com.google.android.material.checkbox.MaterialCheckBox
+                    android:id="@+id/cbIsPopular"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="⭐ Thêm vào Phim Nổi Bật (Popular Slider)"
+                    android:textColor="#333333"
+                    android:textSize="13sp"
+                    app:buttonTint="#E50914" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 2. CARD 2: QUẢN LÝ THỂ LOẠI PHIM (GENRES) -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="#F8F9FA"
+            app:cardCornerRadius="10dp"
+            app:cardElevation="2dp"
+            app:strokeColor="#DDDDDD"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:layout_weight="1"
-                android:text="⚙️ Tạo / Xóa Thể Loại"
-                android:textColor="#E50914"
-                android:textSize="12sp"
-                app:strokeColor="#E50914" />
+                android:orientation="vertical"
+                android:padding="12dp">
 
-        </LinearLayout>
+                <TextView
+                    android:id="@+id/tvSelectedGenres"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:textColor="#333333"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    tools:text="🏷️ Thể loại đã chọn: Hành Động, Kinh Dị" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSelectGenres"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:text="🏷️ Chọn Thể Loại"
+                        android:textSize="11sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnManageGenres"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:text="⚙️ Tạo / Xóa Thể Loại"
+                        android:textColor="#E50914"
+                        android:textSize="11sp"
+                        app:strokeColor="#E50914" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 3. CARD 3: NGUỒN VIDEO GỐC (VIDEO SOURCE & UPLOAD) -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="#F8F9FA"
+            app:cardCornerRadius="10dp"
+            app:cardElevation="2dp"
+            app:strokeColor="#DDDDDD"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="🎬 Nguồn Video Gốc (File Video / Link)"
+                    android:textColor="#333333"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <!-- Đường dẫn Video (YouTube / MP4 / HLS .m3u8) -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:hint="URL Video Gốc (HLS .m3u8 / MP4 / YouTube)">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etDialogVideoUrl"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textUri" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Nút Chọn & Upload Video từ thiết bị lên Cloudinary -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPickVideo"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📁 Chọn &amp; Upload File Video từ máy"
+                    android:textColor="@color/design_default_color_primary"
+                    android:textSize="12sp"
+                    app:icon="@drawable/ic_add"
+                    app:iconTint="@color/design_default_color_primary" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 4. CARD 4: QUẢN LÝ DUB BẮT MẮT (Multi-Audio Tracks Admin) -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="#F8F9FA"
+            app:cardCornerRadius="10dp"
+            app:cardElevation="2dp"
+            app:strokeColor="#DDDDDD"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/tvAudioTracksSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
+                    android:textColor="#333333"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    tools:text="🎙️ Luồng lồng tiếng (Dub): Tiếng Việt, English, Japanese" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnManageAudioTracks"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🎙️ Quản Lý Luồng Lồng Tiếng (Dubbing)"
+                    android:textColor="#3700B3"
+                    android:textSize="12sp"
+                    app:strokeColor="#3700B3" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 5. CARD 5: QUẢN LÝ SUB BẮT MẮT (Multi-Subtitles CC Admin) -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="#F8F9FA"
+            app:cardCornerRadius="10dp"
+            app:cardElevation="2dp"
+            app:strokeColor="#DDDDDD"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/tvSubtitlesSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
+                    android:textColor="#333333"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    tools:text="💬 Phụ đề rời CC: Tiếng Việt (.vtt), English (.vtt)" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnManageSubtitles"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="💬 Quản Lý Phụ Đề Rời (Subtitles CC)"
+                    android:textColor="#E50914"
+                    android:textSize="12sp"
+                    app:strokeColor="#E50914" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 6. CARD 6: QUẢN LÝ ẢNH BÌA / THUMBNAIL PNG (THUMBNAIL IMAGE & UPLOAD) -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="#F8F9FA"
+            app:cardCornerRadius="10dp"
+            app:cardElevation="2dp"
+            app:strokeColor="#DDDDDD"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="🖼️ Ảnh Bìa / Poster Phim (PNG / JPG)"
+                    android:textColor="#333333"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <!-- Đường dẫn Ảnh Bìa (Tùy chọn) -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:hint="URL Ảnh Bìa / Poster PNG, JPG">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etDialogThumbnailUrl"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textUri" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Nút Chọn & Upload Ảnh Bìa từ thiết bị lên Cloudinary -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPickImage"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🖼️ Chọn &amp; Upload Ảnh từ máy"
+                    android:textColor="@color/design_default_color_primary"
+                    android:textSize="12sp"
+                    app:icon="@drawable/ic_add"
+                    app:iconTint="@color/design_default_color_primary" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
 
-    <!-- CheckBox chọn Phim Nổi Bật (Popular Slider) -->
-    <com.google.android.material.checkbox.MaterialCheckBox
-        android:id="@+id/cbIsPopular"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        android:text="⭐ Thêm vào danh sách Phim Nổi Bật (Popular Slider)"
-        android:textColor="@android:color/black"
-        android:textSize="14sp"
-        app:buttonTint="#E50914" />
-
-    <!-- Đường dẫn Video (YouTube / MP4) -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:hint="URL Video (YouTube hoặc MP4)">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etDialogVideoUrl"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textUri" />
-
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <!-- Nút Chọn & Upload Video từ thiết bị lên Cloudinary -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnPickVideo"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        android:text="📁 Chọn &amp; Upload Video từ máy"
-        android:textColor="@color/design_default_color_primary"
-        app:icon="@drawable/ic_add"
-        app:iconTint="@color/design_default_color_primary" />
-
-    <!-- Đường dẫn Ảnh Bìa (Tùy chọn) -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:hint="URL Ảnh Bìa / Thumbnail (Tùy chọn)">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etDialogThumbnailUrl"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textUri" />
-
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <!-- Nút Chọn & Upload Ảnh Bìa từ thiết bị lên Cloudinary -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnPickImage"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:text="🖼️ Chọn &amp; Upload Ảnh từ máy"
-        android:textColor="@color/design_default_color_primary"
-        app:icon="@drawable/ic_add"
-        app:iconTint="@color/design_default_color_primary" />
-
-</LinearLayout>
+</ScrollView>

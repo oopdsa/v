@@ -21,19 +21,18 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import androidx.core.widget.NestedScrollView;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -41,6 +40,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,10 +48,10 @@ import java.util.Map;
 /**
  * MainActivity hiển thị danh sách phim/video đẳng cấp Cinema.
  * Hỗ trợ ViewPager2 Slider phim nổi bật (Popular), Tìm kiếm thời gian thực,
- * Lọc thể loại 3 Trạng Thái (Bình thường / ✓ Bắt buộc có / ✕ Blacklist),
- * Quản lý Thể Loại Phim Admin (Tạo/Xóa Thể Loại & Tự động đồng bộ gỡ bỏ khỏi Video),
- * Chế độ Admin đồng bộ trực tiếp với FIREBASE CLOUD FIRESTORE
- * và tích hợp Upload Video/Ảnh Bìa lên Đám mây qua CloudinaryUploader.
+ * Chuyển đổi 2 chế độ View (Mặc Định Cuộn Ngang Top 10 vs Xem Tất Cả Lưới 3 Cột 18 Phim/Trang Phân Trang),
+ * Bộ Lọc Thể Loại 3 Trạng Thái Netflix Style (Bình thường / ✓ Bắt buộc / ✕ Blacklist),
+ * Quản lý Thể Loại Phim & Luồng Âm Thanh (Dub) / Phụ Đề (Sub CC) Admin,
+ * Chế độ Admin đồng bộ trực tiếp với FIREBASE CLOUD FIRESTORE.
  */
 public class MainActivity extends AppCompatActivity {
 
@@ -65,16 +65,31 @@ public class MainActivity extends AppCompatActivity {
     private ViewPager2 viewPagerPopular;
     private PopularVideoAdapter popularVideoAdapter;
     private List<Video> popularVideoList;
+    private View layoutPopularSlider;
 
+    private MaterialButton btnToggleViewMode;
+    private TextView btnSwitchViewMode;
+    private TextView tvSectionTitle;
     private ImageButton btnToggleAdmin;
     private ImageButton btnToggleSearch;
     private CardView cardSearch;
     private EditText etSearchQuery;
     private ImageButton btnClearSearch;
+    private TextView btnResetFilter;
     private ChipGroup chipGroupGenresFilter;
     private FloatingActionButton fabAddVideo;
+    private NestedScrollView nestedScrollView;
+
+    // Thanh phân trang Lưới 3 cột (18 phim / trang)
+    private LinearLayout layoutPagination;
+    private MaterialButton btnPrevPage;
+    private MaterialButton btnNextPage;
+    private TextView tvPageIndicator;
+    private int currentPage = 1;
+    private static final int PAGE_SIZE = 18; // 18 phim mỗi trang (6 hàng x 3 cột)
 
     private boolean isAdminMode = false;
+    private boolean isAllViewMode = false; // false = Mặc Định (Ngang Top 10), true = Tất Cả (Lưới 3 Cột 18 Phim/Trang)
     private FirebaseFirestore db; // Đối tượng Firestore
 
     // Quản lý Thể Loại Phim (Genres)
@@ -110,23 +125,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
-
-        // Cấu hình EdgeToEdge UI Insets
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
 
         initViews();
 
-        // 1. Khởi tạo ProgressDialog
         progressDialog = new ProgressDialog(this);
         progressDialog.setCancelable(false);
 
-        // 2. Đăng ký Launcher chọn & upload VIDEO từ thiết bị
+        // Đăng ký Launcher chọn & upload VIDEO từ thiết bị
         videoPickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 uri -> {
@@ -153,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        // 3. Đăng ký Launcher chọn & upload ẢNH BÌA (Thumbnail) từ thiết bị
+        // Đăng ký Launcher chọn & upload ẢNH BÌA từ thiết bị
         imagePickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 uri -> {
@@ -180,20 +186,28 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        // Khởi tạo danh sách rỗng ban đầu
+        // Khởi tạo danh sách ban đầu
         fullVideoList = new ArrayList<>();
         currentFilteredList = new ArrayList<>();
         popularVideoList = new ArrayList<>();
         globalGenreList = new ArrayList<>();
         genreFilterStates = new HashMap<>();
 
-        // Cài đặt Adapters
-        setupAdapter();
+        // Nạp dữ liệu mặc định lập tức vào RAM để UI hiển thị ngay 100% không bị đen
+        seedLocalSampleData();
 
-        // Khởi tạo Firestore và nạp dữ liệu
-        db = FirebaseFirestore.getInstance();
-        loadGenresFromFirebase();
-        loadVideosFromFirebase();
+        // Cài đặt Adapters & Chế độ View
+        setupAdapter();
+        applyViewMode();
+
+        // Khởi tạo Firestore và nạp dữ liệu đồng bộ
+        try {
+            db = FirebaseFirestore.getInstance();
+            loadGenresFromFirebase();
+            loadVideosFromFirebase();
+        } catch (Exception e) {
+            Log.e(TAG, "Lỗi kết nối Firebase Firestore", e);
+        }
 
         // Cài đặt các sự kiện
         setupSearchAndAdminEvents();
@@ -203,22 +217,154 @@ public class MainActivity extends AppCompatActivity {
         rvVideos = findViewById(R.id.rvVideos);
         btnToggleAdmin = findViewById(R.id.btnToggleAdmin);
         btnToggleSearch = findViewById(R.id.btnToggleSearch);
+        btnToggleViewMode = findViewById(R.id.btnToggleViewMode);
+        btnSwitchViewMode = findViewById(R.id.btnSwitchViewMode);
+        tvSectionTitle = findViewById(R.id.tvSectionTitle);
+        btnResetFilter = findViewById(R.id.btnResetFilter);
         cardSearch = findViewById(R.id.cardSearch);
         etSearchQuery = findViewById(R.id.etSearchQuery);
         btnClearSearch = findViewById(R.id.btnClearSearch);
         chipGroupGenresFilter = findViewById(R.id.chipGroupGenresFilter);
         fabAddVideo = findViewById(R.id.fabAddVideo);
+        nestedScrollView = findViewById(R.id.nestedScrollView);
 
         viewPagerPopular = findViewById(R.id.viewPagerPopular);
+        layoutPopularSlider = findViewById(R.id.layoutPopularSlider);
 
-        rvVideos.setLayoutManager(new LinearLayoutManager(this));
+        layoutPagination = findViewById(R.id.layoutPagination);
+        btnPrevPage = findViewById(R.id.btnPrevPage);
+        btnNextPage = findViewById(R.id.btnNextPage);
+        tvPageIndicator = findViewById(R.id.tvPageIndicator);
     }
 
     /**
-     * Tải danh sách Thể Loại Phim từ bộ sưu tập "genres" trên Firebase Firestore.
-     * Nếu trống sẽ khởi tạo danh sách thể loại mặc định.
+     * Nạp dữ liệu phim và thể loại mẫu lập tức vào RAM khi mở app.
+     * Đảm bảo ứng dụng KHÔNG BAO GIỜ bị màn hình đen hay trống trải khi chờ Firestore.
      */
+    private void seedLocalSampleData() {
+        String[] defaults = {"Hành Động", "Hài Hước", "Viễn Tưởng", "Tình Cảm", "Kinh Dị", "Hoạt Hình", "Phiêu Lưu"};
+        globalGenreList.clear();
+        for (String name : defaults) {
+            globalGenreList.add(new Genre(name));
+            genreFilterStates.put(name, 0);
+        }
+
+        fullVideoList.clear();
+        Video v1 = new Video("Big Buck Bunny 4K", "Bộ phim hoạt hình 3D nổi tiếng kể về chú thỏ khổng lồ Bunny trong rừng xanh.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", true);
+        v1.setGenres(new ArrayList<>(Arrays.asList("Hoạt Hình", "Hài Hước", "Phiêu Lưu")));
+        v1.getAudioTracks().add(new AudioTrackOption("Tiếng Việt (Lồng tiếng / Dub)", "vi", ""));
+        v1.getAudioTracks().add(new AudioTrackOption("English (Original)", "en", ""));
+        v1.getSubtitleTracks().add(new SubtitleOption("Tiếng Việt (VTT)", "vi", "https://storage.googleapis.com/exoplayer-test-media-1/webvtt/numeric-subtitles-en.vtt"));
+        v1.getSubtitleTracks().add(new SubtitleOption("English (VTT)", "en", "https://storage.googleapis.com/exoplayer-test-media-1/webvtt/numeric-subtitles-en.vtt"));
+
+        Video v2 = new Video("Tears of Steel Sci-Fi", "Phim viễn tưởng kỹ xảo đỉnh cao về cuộc chiến bảo vệ Trái Đất.", "https://img.youtube.com/vi/e1Ebe1sB70M/hqdefault.jpg", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", true);
+        v2.setGenres(new ArrayList<>(Arrays.asList("Viễn Tưởng", "Hành Động")));
+
+        Video v3 = new Video("Sintel Fantasy Adventure", "Hành trình tìm kiếm rồng con kỳ thú của cô gái trẻ Sintel.", "https://img.youtube.com/vi/e1Ebe1sB70M/hqdefault.jpg", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", true);
+        v3.setGenres(new ArrayList<>(Arrays.asList("Phiêu Lưu", "Hoạt Hình")));
+
+        Video v4 = new Video("Phim Chó Thông Minh", "Những khoảnh khắc đáng yêu và thông minh của chú chó cún.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://www.youtube.com/watch?v=aqz-KE-bpKQ", false);
+        v4.setGenres(new ArrayList<>(Arrays.asList("Hài Hước", "Hành Động")));
+
+        Video v5 = new Video("COW - Phim Bò Ăn Cỏ", "Thế giới động vật thiên nhiên hoang dã sinh động.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://www.youtube.com/watch?v=aqz-KE-bpKQ", false);
+        v5.setGenres(new ArrayList<>(Arrays.asList("Hoạt Hình", "Phiêu Lưu")));
+
+        Video v6 = new Video("Phim Voi Khổng Lồ", "Cuộc phiêu lưu viễn tưởng kỳ thú trên vùng đất hoang sơ.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://www.youtube.com/watch?v=aqz-KE-bpKQ", false);
+        v6.setGenres(new ArrayList<>(Arrays.asList("Phiêu Lưu", "Viễn Tưởng")));
+
+        fullVideoList.add(v1);
+        fullVideoList.add(v2);
+        fullVideoList.add(v3);
+        fullVideoList.add(v4);
+        fullVideoList.add(v5);
+        fullVideoList.add(v6);
+
+        currentFilteredList.clear();
+        currentFilteredList.addAll(fullVideoList);
+
+        updatePopularSliderList();
+    }
+
+    private List<Video> getPaginatedList() {
+        if (currentFilteredList == null || currentFilteredList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        int total = currentFilteredList.size();
+        int maxPages = (int) Math.ceil((double) total / PAGE_SIZE);
+        if (maxPages == 0) maxPages = 1;
+
+        if (currentPage < 1) currentPage = 1;
+        if (currentPage > maxPages) currentPage = maxPages;
+
+        int startIndex = (currentPage - 1) * PAGE_SIZE;
+        int endIndex = Math.min(startIndex + PAGE_SIZE, total);
+
+        if (startIndex >= total) {
+            return new ArrayList<>();
+        }
+
+        return new ArrayList<>(currentFilteredList.subList(startIndex, endIndex));
+    }
+
+    private void updatePaginationUI() {
+        if (!isAllViewMode || currentFilteredList == null || currentFilteredList.isEmpty()) {
+            if (layoutPagination != null) layoutPagination.setVisibility(View.GONE);
+            return;
+        }
+
+        if (layoutPagination != null) layoutPagination.setVisibility(View.VISIBLE);
+
+        int total = currentFilteredList.size();
+        int maxPages = (int) Math.ceil((double) total / PAGE_SIZE);
+        if (maxPages == 0) maxPages = 1;
+
+        int startItem = (currentPage - 1) * PAGE_SIZE + 1;
+        int endItem = Math.min(currentPage * PAGE_SIZE, total);
+
+        if (tvPageIndicator != null) {
+            tvPageIndicator.setText("Trang " + currentPage + " / " + maxPages + " (" + startItem + "-" + endItem + " / " + total + ")");
+        }
+
+        if (btnPrevPage != null) {
+            btnPrevPage.setEnabled(currentPage > 1);
+            btnPrevPage.setAlpha(currentPage > 1 ? 1.0f : 0.4f);
+        }
+
+        if (btnNextPage != null) {
+            btnNextPage.setEnabled(currentPage < maxPages);
+            btnNextPage.setAlpha(currentPage < maxPages ? 1.0f : 0.4f);
+        }
+    }
+
+    private void applyViewMode() {
+        if (isAllViewMode) {
+            if (layoutPopularSlider != null) layoutPopularSlider.setVisibility(View.GONE);
+            if (tvSectionTitle != null) tvSectionTitle.setText("Tất Cả Phim (" + currentFilteredList.size() + ")");
+            if (btnToggleViewMode != null) btnToggleViewMode.setText("Tất Cả");
+            if (btnSwitchViewMode != null) btnSwitchViewMode.setText("Chế độ Mặc định ➔");
+
+            rvVideos.getRecycledViewPool().clear();
+            rvVideos.setLayoutManager(new GridLayoutManager(this, 3));
+            videoAdapter.setGridMode(true);
+            videoAdapter.updateVideoList(getPaginatedList());
+            updatePaginationUI();
+        } else {
+            if (layoutPopularSlider != null) layoutPopularSlider.setVisibility(View.VISIBLE);
+            if (tvSectionTitle != null) tvSectionTitle.setText("Recently Added (Top 10)");
+            if (btnToggleViewMode != null) btnToggleViewMode.setText("Mặc Định");
+            if (btnSwitchViewMode != null) btnSwitchViewMode.setText("Xem tất cả ➔");
+
+            if (layoutPagination != null) layoutPagination.setVisibility(View.GONE);
+
+            rvVideos.getRecycledViewPool().clear();
+            rvVideos.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+            videoAdapter.setHorizontalMode(true);
+            videoAdapter.updateVideoList(currentFilteredList);
+        }
+    }
+
     private void loadGenresFromFirebase() {
+        if (db == null) return;
         db.collection("genres").get().addOnCompleteListener(task -> {
             if (task.isSuccessful() && task.getResult() != null && !task.getResult().isEmpty()) {
                 globalGenreList.clear();
@@ -229,27 +375,11 @@ public class MainActivity extends AppCompatActivity {
                     }
                     globalGenreList.add(genre);
                 }
-            } else {
-                // Khởi tạo các thể loại mặc định nếu Firebase chưa có
-                seedDefaultGenres();
+                setupGenreFilterChips();
             }
-            setupGenreFilterChips();
         });
     }
 
-    private void seedDefaultGenres() {
-        String[] defaults = {"Hành Động", "Hài Hước", "Viễn Tưởng", "Tình Cảm", "Kinh Dị", "Hoạt Hình", "Phiêu Lưu"};
-        globalGenreList.clear();
-        for (String name : defaults) {
-            Genre genre = new Genre(name);
-            globalGenreList.add(genre);
-            db.collection("genres").document(genre.getId()).set(genre);
-        }
-    }
-
-    /**
-     * Khởi tạo cụm Chips Thể Loại 3 Trạng Thái (0: Bình thường, 1: ✓ Bắt buộc có, 2: ✕ Blacklist).
-     */
     private void setupGenreFilterChips() {
         if (chipGroupGenresFilter == null) return;
         chipGroupGenresFilter.removeAllViews();
@@ -257,7 +387,7 @@ public class MainActivity extends AppCompatActivity {
         for (Genre genre : globalGenreList) {
             String name = genre.getName();
             if (!genreFilterStates.containsKey(name)) {
-                genreFilterStates.put(name, 0); // Trạng thái mặc định: 0 (Normal)
+                genreFilterStates.put(name, 0);
             }
 
             Integer stateObj = genreFilterStates.get(name);
@@ -270,13 +400,13 @@ public class MainActivity extends AppCompatActivity {
             chip.setOnClickListener(v -> {
                 Integer currObj = genreFilterStates.get(name);
                 int currentState = currObj != null ? currObj : 0;
-                int nextState = (currentState + 1) % 3; // Lặp 0 -> 1 -> 2 -> 0
+                int nextState = (currentState + 1) % 3;
                 genreFilterStates.put(name, nextState);
 
                 chip.setText(getChipText(name, nextState));
                 updateChipStyle(chip, nextState);
 
-                // Lọc lại danh sách video ngay lập tức
+                currentPage = 1;
                 filterVideoList(etSearchQuery.getText().toString());
             });
 
@@ -291,50 +421,40 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateChipStyle(Chip chip, int state) {
-        if (state == 1) { // YES / Included
-            chip.setChipBackgroundColor(ColorStateList.valueOf(Color.parseColor("#4CAF50"))); // Green
+        if (state == 1) {
+            chip.setChipBackgroundColor(ColorStateList.valueOf(Color.parseColor("#4CAF50")));
             chip.setTextColor(Color.WHITE);
-        } else if (state == 2) { // BLACKLIST / Excluded
-            chip.setChipBackgroundColor(ColorStateList.valueOf(Color.parseColor("#E50914"))); // Red Accent
+        } else if (state == 2) {
+            chip.setChipBackgroundColor(ColorStateList.valueOf(Color.parseColor("#E50914")));
             chip.setTextColor(Color.WHITE);
-        } else { // Normal / Ignored
-            chip.setChipBackgroundColor(ColorStateList.valueOf(Color.parseColor("#2A2A38"))); // Dark Gray
+        } else {
+            chip.setChipBackgroundColor(ColorStateList.valueOf(Color.parseColor("#2A2A38")));
             chip.setTextColor(Color.parseColor("#AAAAAA"));
         }
     }
 
-    /**
-     * Tải danh sách phim trực tiếp từ bộ sưu tập "videos" trên Firebase Firestore.
-     */
     private void loadVideosFromFirebase() {
+        if (db == null) return;
         db.collection("videos").get().addOnCompleteListener(task -> {
             if (task.isSuccessful() && task.getResult() != null && !task.getResult().isEmpty()) {
                 fullVideoList.clear();
 
                 for (QueryDocumentSnapshot document : task.getResult()) {
                     Video video = document.toObject(Video.class);
-
                     if (video.getId() == null || video.getId().isEmpty()) {
                         video.setId(document.getId());
                     }
-
                     fullVideoList.add(video);
                 }
 
                 filterVideoList(etSearchQuery.getText().toString());
                 updatePopularSliderList();
 
-                Toast.makeText(MainActivity.this, "Đã tải " + fullVideoList.size() + " video từ Firebase Firestore", Toast.LENGTH_SHORT).show();
-
-            } else {
-                Log.w(TAG, "Firebase Firestore chưa có dữ liệu hoặc kết nối thất bại.");
+                Toast.makeText(MainActivity.this, "Đã đồng bộ " + fullVideoList.size() + " video từ Firebase Firestore", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    /**
-     * Cập nhật danh sách các phim nổi bật (isPopular = true) lên ViewPager2 Slider.
-     */
     private void updatePopularSliderList() {
         popularVideoList.clear();
         for (Video video : fullVideoList) {
@@ -355,17 +475,49 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void openPlayerForVideo(Video video) {
+        ArrayList<String> audioNames = new ArrayList<>();
+        ArrayList<String> audioLangs = new ArrayList<>();
+        ArrayList<String> audioUrls = new ArrayList<>();
+
+        if (video.getAudioTracks() != null) {
+            for (AudioTrackOption audio : video.getAudioTracks()) {
+                audioNames.add(audio.getName());
+                audioLangs.add(audio.getLanguage());
+                audioUrls.add(audio.getUrl());
+            }
+        }
+
+        ArrayList<String> subNames = new ArrayList<>();
+        ArrayList<String> subLangs = new ArrayList<>();
+        ArrayList<String> subUrls = new ArrayList<>();
+
+        if (video.getSubtitleTracks() != null) {
+            for (SubtitleOption sub : video.getSubtitleTracks()) {
+                subNames.add(sub.getName());
+                subLangs.add(sub.getLanguage());
+                subUrls.add(sub.getSubtitleUrl());
+            }
+        }
+
+        Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
+        intent.putExtra(PlayerActivity.EXTRA_VIDEO_URL, video.getVideoUrl());
+        intent.putExtra(PlayerActivity.EXTRA_VIDEO_TITLE, video.getTitle());
+        intent.putExtra(PlayerActivity.EXTRA_VIDEO_DESC, video.getDescription());
+        intent.putExtra("extra_video_genres", video.getGenresString());
+        intent.putStringArrayListExtra("extra_audio_names", audioNames);
+        intent.putStringArrayListExtra("extra_audio_langs", audioLangs);
+        intent.putStringArrayListExtra("extra_audio_urls", audioUrls);
+        intent.putStringArrayListExtra("extra_sub_names", subNames);
+        intent.putStringArrayListExtra("extra_sub_langs", subLangs);
+        intent.putStringArrayListExtra("extra_sub_urls", subUrls);
+        startActivity(intent);
+    }
+
     private void setupAdapter() {
         videoAdapter = new VideoAdapter(
                 this, currentFilteredList,
-                video -> {
-                    Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
-                    intent.putExtra(PlayerActivity.EXTRA_VIDEO_URL, video.getVideoUrl());
-                    intent.putExtra(PlayerActivity.EXTRA_VIDEO_TITLE, video.getTitle());
-                    intent.putExtra(PlayerActivity.EXTRA_VIDEO_DESC, video.getDescription());
-                    intent.putExtra("extra_video_genres", video.getGenresString());
-                    startActivity(intent);
-                },
+                video -> openPlayerForVideo(video),
                 (video, position) -> showAddEditVideoDialog(video),
                 (video, position) -> confirmDeleteVideo(video)
         );
@@ -386,12 +538,57 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        View.OnClickListener switchViewListener = v -> {
+            isAllViewMode = !isAllViewMode;
+            currentPage = 1;
+            applyViewMode();
+            Toast.makeText(this, isAllViewMode ? "Chuyển sang Xem Tất Cả Phim (Lưới 3 Cột, 18 Phim/Trang)" : "Chuyển sang Chế Độ Mặc Định (Top 10)", Toast.LENGTH_SHORT).show();
+        };
+
+        if (btnToggleViewMode != null) btnToggleViewMode.setOnClickListener(switchViewListener);
+        if (btnSwitchViewMode != null) btnSwitchViewMode.setOnClickListener(switchViewListener);
+
+        if (btnPrevPage != null) {
+            btnPrevPage.setOnClickListener(v -> {
+                if (currentPage > 1) {
+                    currentPage--;
+                    applyViewMode();
+                    if (nestedScrollView != null) nestedScrollView.smoothScrollTo(0, 0);
+                }
+            });
+        }
+
+        if (btnNextPage != null) {
+            btnNextPage.setOnClickListener(v -> {
+                int maxPages = (int) Math.ceil((double) currentFilteredList.size() / PAGE_SIZE);
+                if (currentPage < maxPages) {
+                    currentPage++;
+                    applyViewMode();
+                    if (nestedScrollView != null) nestedScrollView.smoothScrollTo(0, 0);
+                }
+            });
+        }
+
+        if (btnResetFilter != null) {
+            btnResetFilter.setOnClickListener(v -> {
+                etSearchQuery.setText("");
+                for (String key : genreFilterStates.keySet()) {
+                    genreFilterStates.put(key, 0);
+                }
+                currentPage = 1;
+                setupGenreFilterChips();
+                filterVideoList("");
+                Toast.makeText(this, "Đã đặt lại bộ lọc!", Toast.LENGTH_SHORT).show();
+            });
+        }
+
         etSearchQuery.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
+                currentPage = 1;
                 filterVideoList(s.toString());
             }
 
@@ -417,22 +614,17 @@ public class MainActivity extends AppCompatActivity {
         fabAddVideo.setOnClickListener(v -> showAddEditVideoDialog(null));
     }
 
-    /**
-     * Lọc danh sách video kết hợp Tìm kiếm Từ Khóa và Bộ Lọc Thể Loại 3 Trạng Thái (Yes/Blacklist/No).
-     */
     private void filterVideoList(String query) {
         currentFilteredList.clear();
         String lowerCaseQuery = (query != null) ? query.toLowerCase().trim() : "";
 
         for (Video video : fullVideoList) {
-            // 1. Lọc theo từ khóa tìm kiếm
             boolean matchText = lowerCaseQuery.isEmpty()
                     || (video.getTitle() != null && video.getTitle().toLowerCase().contains(lowerCaseQuery))
                     || (video.getDescription() != null && video.getDescription().toLowerCase().contains(lowerCaseQuery));
 
             if (!matchText) continue;
 
-            // 2. Lọc theo Thể Loại 3 Trạng Thái
             boolean matchGenres = true;
             List<String> videoGenres = video.getGenres();
 
@@ -440,12 +632,12 @@ public class MainActivity extends AppCompatActivity {
                 String genreName = entry.getKey();
                 int state = entry.getValue();
 
-                if (state == 1) { // YES -> Video BẮT BUỘC phải có thể loại này
+                if (state == 1) {
                     if (videoGenres == null || !videoGenres.contains(genreName)) {
                         matchGenres = false;
                         break;
                     }
-                } else if (state == 2) { // BLACKLIST -> Video CẤM/LOẠI TRỪ thể loại này
+                } else if (state == 2) {
                     if (videoGenres != null && videoGenres.contains(genreName)) {
                         matchGenres = false;
                         break;
@@ -457,12 +649,10 @@ public class MainActivity extends AppCompatActivity {
                 currentFilteredList.add(video);
             }
         }
-        videoAdapter.updateVideoList(currentFilteredList);
+
+        applyViewMode();
     }
 
-    /**
-     * Dialog Thêm/Sửa Video hỗ trợ gán Thể Loại và Quản lý Thể Loại Admin.
-     */
     private void showAddEditVideoDialog(Video videoToEdit) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_edit_video, null);
@@ -480,7 +670,15 @@ public class MainActivity extends AppCompatActivity {
         Button btnPickVideo = dialogView.findViewById(R.id.btnPickVideo);
         Button btnPickImage = dialogView.findViewById(R.id.btnPickImage);
 
+        // Ánh xạ nút bấm Quản lý Luồng Âm Thanh & Phụ Đề
+        Button btnManageAudioTracks = dialogView.findViewById(R.id.btnManageAudioTracks);
+        TextView tvAudioTracksSummary = dialogView.findViewById(R.id.tvAudioTracksSummary);
+        Button btnManageSubtitles = dialogView.findViewById(R.id.btnManageSubtitles);
+        TextView tvSubtitlesSummary = dialogView.findViewById(R.id.tvSubtitlesSummary);
+
         List<String> tempSelectedGenres = new ArrayList<>();
+        List<AudioTrackOption> tempAudioTracks = new ArrayList<>();
+        List<SubtitleOption> tempSubtitleTracks = new ArrayList<>();
 
         boolean isEditMode = (videoToEdit != null);
         if (isEditMode) {
@@ -493,14 +691,21 @@ public class MainActivity extends AppCompatActivity {
             if (videoToEdit.getGenres() != null) {
                 tempSelectedGenres.addAll(videoToEdit.getGenres());
             }
+            if (videoToEdit.getAudioTracks() != null) {
+                tempAudioTracks.addAll(videoToEdit.getAudioTracks());
+            }
+            if (videoToEdit.getSubtitleTracks() != null) {
+                tempSubtitleTracks.addAll(videoToEdit.getSubtitleTracks());
+            }
         } else {
             tvDialogTitle.setText("Thêm Video Mới (Firebase)");
             cbIsPopular.setChecked(false);
         }
 
         updateSelectedGenresText(tvSelectedGenres, tempSelectedGenres);
+        updateAudioTracksSummaryText(tvAudioTracksSummary, tempAudioTracks);
+        updateSubtitlesSummaryText(tvSubtitlesSummary, tempSubtitleTracks);
 
-        // Bấm chọn thể loại cho video
         btnSelectGenres.setOnClickListener(v -> {
             String[] genreNames = new String[globalGenreList.size()];
             boolean[] checkedItems = new boolean[globalGenreList.size()];
@@ -526,8 +731,17 @@ public class MainActivity extends AppCompatActivity {
                     .show();
         });
 
-        // Bấm Quản lý Thể Loại Admin (Tạo/Xóa thể loại toàn hệ thống)
         btnManageGenres.setOnClickListener(v -> showAdminManageGenresDialog(tvSelectedGenres, tempSelectedGenres));
+
+        // Sự kiện bấm nút Quản lý Luồng Âm Thanh (Dub)
+        if (btnManageAudioTracks != null) {
+            btnManageAudioTracks.setOnClickListener(v -> showAdminManageAudioTracksDialog(tvAudioTracksSummary, tempAudioTracks));
+        }
+
+        // Sự kiện bấm nút Quản lý Phụ Đề Rời (Sub CC)
+        if (btnManageSubtitles != null) {
+            btnManageSubtitles.setOnClickListener(v -> showAdminManageSubtitlesDialog(tvSubtitlesSummary, tempSubtitleTracks));
+        }
 
         btnPickVideo.setOnClickListener(v -> {
             currentEtVideoUrl = etVideoUrl;
@@ -559,20 +773,25 @@ public class MainActivity extends AppCompatActivity {
                 videoToEdit.setVideoUrl(videoUrl);
                 videoToEdit.setThumbnailUrl(thumbnailUrl);
                 videoToEdit.setGenres(new ArrayList<>(tempSelectedGenres));
+                videoToEdit.setAudioTracks(new ArrayList<>(tempAudioTracks));
+                videoToEdit.setSubtitleTracks(new ArrayList<>(tempSubtitleTracks));
                 videoTarget = videoToEdit;
             } else {
                 videoTarget = new Video(title, description, thumbnailUrl, videoUrl, isPopular);
                 videoTarget.setGenres(new ArrayList<>(tempSelectedGenres));
+                videoTarget.setAudioTracks(new ArrayList<>(tempAudioTracks));
+                videoTarget.setSubtitleTracks(new ArrayList<>(tempSubtitleTracks));
                 fullVideoList.add(0, videoTarget);
             }
 
             filterVideoList(etSearchQuery.getText().toString());
             updatePopularSliderList();
 
-            // Đồng bộ trực tiếp lên Firebase Cloud Firestore
-            db.collection("videos").document(videoTarget.getId()).set(videoTarget)
-                    .addOnSuccessListener(aVoid -> Toast.makeText(this, "Đã lưu lên Firebase thành công!", Toast.LENGTH_SHORT).show())
-                    .addOnFailureListener(e -> Log.e(TAG, "Lỗi đồng bộ Firebase", e));
+            if (db != null) {
+                db.collection("videos").document(videoTarget.getId()).set(videoTarget)
+                        .addOnSuccessListener(aVoid -> Toast.makeText(this, "Đã lưu lên Firebase thành công!", Toast.LENGTH_SHORT).show())
+                        .addOnFailureListener(e -> Log.e(TAG, "Lỗi đồng bộ Firebase", e));
+            }
         });
 
         builder.setNegativeButton("Hủy", (dialog, which) -> dialog.dismiss());
@@ -592,10 +811,178 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void updateAudioTracksSummaryText(TextView tv, List<AudioTrackOption> list) {
+        if (tv == null) return;
+        if (list == null || list.isEmpty()) {
+            tv.setText("🎙️ Luồng lồng tiếng (Dub): Mặc định");
+        } else {
+            StringBuilder sb = new StringBuilder("🎙️ Luồng lồng tiếng (Dub): ");
+            for (int i = 0; i < list.size(); i++) {
+                sb.append(list.get(i).getName());
+                if (i < list.size() - 1) sb.append(", ");
+            }
+            tv.setText(sb.toString());
+        }
+    }
+
+    private void updateSubtitlesSummaryText(TextView tv, List<SubtitleOption> list) {
+        if (tv == null) return;
+        if (list == null || list.isEmpty()) {
+            tv.setText("💬 Phụ đề rời (Sub CC): Chưa có");
+        } else {
+            StringBuilder sb = new StringBuilder("💬 Phụ đề rời (Sub CC): ");
+            for (int i = 0; i < list.size(); i++) {
+                sb.append(list.get(i).getName());
+                if (i < list.size() - 1) sb.append(", ");
+            }
+            tv.setText(sb.toString());
+        }
+    }
+
     /**
-     * Dialog Admin Quản Lý Thể Loại (Tạo mới hoặc Xóa Thể Loại toàn hệ thống).
-     * Khi xóa thể loại -> tự động gỡ bỏ thể loại đó khỏi tất cả video trong Firestore.
+     * Dialog Admin Quản Lý Luồng Lồng Tiếng Alternate Dubbing (Tạo mới hoặc Xóa Luồng Âm Thanh).
      */
+    private void showAdminManageAudioTracksDialog(TextView tvSummary, List<AudioTrackOption> tempAudioTracks) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("🎙️ Quản Lý Luồng Lồng Tiếng (Dub)");
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(32, 16, 32, 16);
+
+        EditText etName = new EditText(this);
+        etName.setHint("Tên luồng (vd: English Dub, Tiếng Nhật Original)");
+        layout.addView(etName);
+
+        EditText etLang = new EditText(this);
+        etLang.setHint("Mã ngôn ngữ (vd: en, ja, vi)");
+        etLang.setText("en");
+        layout.addView(etLang);
+
+        EditText etUrl = new EditText(this);
+        etUrl.setHint("URL luồng video/audio lồng tiếng thay thế (nếu có)");
+        layout.addView(etUrl);
+
+        Button btnAdd = new Button(this);
+        btnAdd.setText("➕ Thêm Luồng Lồng Tiếng");
+        layout.addView(btnAdd);
+
+        TextView tvHeader = new TextView(this);
+        tvHeader.setText("\nCác luồng lồng tiếng hiện có (Bấm để Xóa):");
+        tvHeader.setTypeface(null, Typeface.BOLD);
+        layout.addView(tvHeader);
+
+        builder.setView(layout);
+        AlertDialog dialog = builder.setNegativeButton("Đóng", null).create();
+
+        btnAdd.setOnClickListener(v -> {
+            String name = etName.getText().toString().trim();
+            String lang = etLang.getText().toString().trim();
+            String url = etUrl.getText().toString().trim();
+
+            if (name.isEmpty()) {
+                Toast.makeText(this, "Vui lòng nhập tên luồng lồng tiếng!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            tempAudioTracks.add(new AudioTrackOption(name, lang.isEmpty() ? "en" : lang, url));
+            updateAudioTracksSummaryText(tvSummary, tempAudioTracks);
+            Toast.makeText(this, "Đã thêm luồng: " + name, Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+            showAdminManageAudioTracksDialog(tvSummary, tempAudioTracks);
+        });
+
+        for (AudioTrackOption audio : tempAudioTracks) {
+            Button btnItem = new Button(this);
+            btnItem.setText("🗑️ Xóa: " + audio.getName() + " (" + audio.getLanguage() + ")");
+            btnItem.setTextColor(Color.RED);
+
+            btnItem.setOnClickListener(v -> {
+                tempAudioTracks.remove(audio);
+                updateAudioTracksSummaryText(tvSummary, tempAudioTracks);
+                Toast.makeText(this, "Đã xóa luồng âm thanh!", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+                showAdminManageAudioTracksDialog(tvSummary, tempAudioTracks);
+            });
+
+            layout.addView(btnItem);
+        }
+
+        dialog.show();
+    }
+
+    /**
+     * Dialog Admin Quản Lý Phụ Đề Rời Subtitles CC (Tạo mới hoặc Xóa File Phụ Đề).
+     */
+    private void showAdminManageSubtitlesDialog(TextView tvSummary, List<SubtitleOption> tempSubtitleTracks) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("💬 Quản Lý Phụ Đề Rời (Subtitles CC)");
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(32, 16, 32, 16);
+
+        EditText etName = new EditText(this);
+        etName.setHint("Tên phụ đề (vd: Tiếng Việt, English, 日本語)");
+        layout.addView(etName);
+
+        EditText etLang = new EditText(this);
+        etLang.setHint("Mã ngôn ngữ (vd: vi, en, ja)");
+        etLang.setText("vi");
+        layout.addView(etLang);
+
+        EditText etUrl = new EditText(this);
+        etUrl.setHint("URL file phụ đề (.vtt hoặc .srt)");
+        layout.addView(etUrl);
+
+        Button btnAdd = new Button(this);
+        btnAdd.setText("➕ Thêm File Phụ Đề Mới");
+        layout.addView(btnAdd);
+
+        TextView tvHeader = new TextView(this);
+        tvHeader.setText("\nCác file phụ đề hiện có (Bấm để Xóa):");
+        tvHeader.setTypeface(null, Typeface.BOLD);
+        layout.addView(tvHeader);
+
+        builder.setView(layout);
+        AlertDialog dialog = builder.setNegativeButton("Đóng", null).create();
+
+        btnAdd.setOnClickListener(v -> {
+            String name = etName.getText().toString().trim();
+            String lang = etLang.getText().toString().trim();
+            String url = etUrl.getText().toString().trim();
+
+            if (name.isEmpty() || url.isEmpty()) {
+                Toast.makeText(this, "Vui lòng nhập đầy đủ tên và URL file phụ đề!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            tempSubtitleTracks.add(new SubtitleOption(name, lang.isEmpty() ? "vi" : lang, url));
+            updateSubtitlesSummaryText(tvSummary, tempSubtitleTracks);
+            Toast.makeText(this, "Đã thêm phụ đề: " + name, Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+            showAdminManageSubtitlesDialog(tvSummary, tempSubtitleTracks);
+        });
+
+        for (SubtitleOption sub : tempSubtitleTracks) {
+            Button btnItem = new Button(this);
+            btnItem.setText("🗑️ Xóa: " + sub.getName() + " (" + sub.getLanguage() + ")");
+            btnItem.setTextColor(Color.RED);
+
+            btnItem.setOnClickListener(v -> {
+                tempSubtitleTracks.remove(sub);
+                updateSubtitlesSummaryText(tvSummary, tempSubtitleTracks);
+                Toast.makeText(this, "Đã xóa phụ đề!", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+                showAdminManageSubtitlesDialog(tvSummary, tempSubtitleTracks);
+            });
+
+            layout.addView(btnItem);
+        }
+
+        dialog.show();
+    }
+
     private void showAdminManageGenresDialog(TextView tvSelectedGenres, List<String> tempSelectedGenres) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("⚙️ Admin Quản Lý Thể Loại Phim");
@@ -629,7 +1016,7 @@ public class MainActivity extends AppCompatActivity {
 
             Genre newGenre = new Genre(newName);
             globalGenreList.add(newGenre);
-            db.collection("genres").document(newGenre.getId()).set(newGenre);
+            if (db != null) db.collection("genres").document(newGenre.getId()).set(newGenre);
 
             setupGenreFilterChips();
             etNewGenre.setText("");
@@ -638,7 +1025,6 @@ public class MainActivity extends AppCompatActivity {
             showAdminManageGenresDialog(tvSelectedGenres, tempSelectedGenres);
         });
 
-        // Bổ sung các dòng thể loại hiện có để xóa
         for (Genre g : globalGenreList) {
             Button btnGenreItem = new Button(this);
             btnGenreItem.setText("🗑️ Xóa: " + g.getName());
@@ -650,13 +1036,12 @@ public class MainActivity extends AppCompatActivity {
                     .setPositiveButton("Xóa", (dialog1, which) -> {
                         String deletedName = g.getName();
                         globalGenreList.remove(g);
-                        db.collection("genres").document(g.getId()).delete();
+                        if (db != null) db.collection("genres").document(g.getId()).delete();
 
-                        // Tự động gỡ bỏ thể loại này khỏi toàn bộ video trên Firestore
                         for (Video video : fullVideoList) {
                             if (video.getGenres() != null && video.getGenres().contains(deletedName)) {
                                 video.getGenres().remove(deletedName);
-                                db.collection("videos").document(video.getId()).set(video);
+                                if (db != null) db.collection("videos").document(video.getId()).set(video);
                             }
                         }
 
@@ -678,9 +1063,6 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    /**
-     * Xác nhận Xóa video khỏi Firebase Cloud Firestore.
-     */
     private void confirmDeleteVideo(Video video) {
         new AlertDialog.Builder(this)
                 .setTitle("Xác Nhận Xóa")
@@ -690,10 +1072,11 @@ public class MainActivity extends AppCompatActivity {
                     filterVideoList(etSearchQuery.getText().toString());
                     updatePopularSliderList();
 
-                    // Xóa dữ liệu trực tiếp khỏi Firebase Firestore
-                    db.collection("videos").document(video.getId()).delete()
-                            .addOnSuccessListener(aVoid -> Toast.makeText(this, "Đã xóa khỏi Firebase!", Toast.LENGTH_SHORT).show())
-                            .addOnFailureListener(e -> Log.e(TAG, "Lỗi xóa trên Firebase", e));
+                    if (db != null) {
+                        db.collection("videos").document(video.getId()).delete()
+                                .addOnSuccessListener(aVoid -> Toast.makeText(this, "Đã xóa khỏi Firebase!", Toast.LENGTH_SHORT).show())
+                                .addOnFailureListener(e -> Log.e(TAG, "Lỗi xóa trên Firebase", e));
+                    }
                 })
                 .setNegativeButton("Hủy", null)
                 .show();

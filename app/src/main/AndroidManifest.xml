@@ -27,7 +27,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Màn hình phát video ExoPlayer ĐÃ GỘP CHUẨN CHO PiP -->
+        <!-- Màn hình phát video ExoPlayer -->
         <activity
             android:name=".PlayerActivity"
             android:exported="false"

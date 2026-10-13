@@ -5,7 +5,7 @@
     android:id="@+id/playerContainer"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0F0F14"
+    android:background="#000000"
     tools:context=".PlayerActivity">
 
     <!-- 1. KHU VỰC PHÁT VIDEO (Video Player Container) -->
@@ -37,62 +37,29 @@
             android:layout_height="match_parent"
             android:visibility="gone" />
 
-        <!-- Khung Nút Tua Nhanh (-10s) và Tua Lùi (+10s) Đặt Ngang Hàng Với Nút Play/Pause Nằm Ở Giữa -->
-        <LinearLayout
-            android:id="@+id/layoutSeekControls"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:gravity="center"
-            android:orientation="horizontal"
-            android:visibility="gone">
-
-            <!-- Nút Tua Lùi 10 Giây (-10s) -->
-            <ImageButton
-                android:id="@+id/btnRewind10"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:layout_marginEnd="56dp"
-                android:background="#80000000"
-                android:contentDescription="Tua lùi 10 giây"
-                android:padding="11dp"
-                android:src="@drawable/ic_rewind_10"
-                app:tint="@android:color/white" />
-
-            <!-- Nút Tua Tới 10 Giây (+10s) -->
-            <ImageButton
-                android:id="@+id/btnForward10"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:layout_marginStart="56dp"
-                android:background="#80000000"
-                android:contentDescription="Tua tới 10 giây"
-                android:padding="11dp"
-                android:src="@drawable/ic_forward_10"
-                app:tint="@android:color/white" />
-
-        </LinearLayout>
-
-        <!-- Thanh Điều Khiển Phía Trên (Top Control Bar) -->
+        <!-- Thanh Điều Khiển Phía Trên (Top Bar: Close, Title, Download, PiP) -->
         <RelativeLayout
             android:id="@+id/layoutTopBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_gravity="top"
             android:background="#A0000000"
-            android:paddingHorizontal="16dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingHorizontal="12dp"
             android:paddingTop="12dp"
             android:paddingBottom="12dp">
 
             <!-- Nút Thoát / Đóng Màn Hình Video -->
             <ImageButton
                 android:id="@+id/btnExitPlayer"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:layout_alignParentStart="true"
                 android:layout_centerVertical="true"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Thoát Video"
-                android:padding="8dp"
+                android:padding="6dp"
                 android:src="@drawable/ic_close"
                 app:tint="@android:color/white" />
 
@@ -102,87 +69,118 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
-                android:layout_marginStart="12dp"
-                android:layout_marginEnd="12dp"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
                 android:layout_toEndOf="@id/btnExitPlayer"
                 android:layout_toStartOf="@id/btnDownloadVideo"
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textColor="@android:color/white"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:textStyle="bold"
                 tools:text="Tên phim đang phát..." />
 
             <!-- Nút Tải Video Phim về máy -->
             <ImageButton
                 android:id="@+id/btnDownloadVideo"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:layout_centerVertical="true"
                 android:layout_marginEnd="6dp"
                 android:layout_toStartOf="@id/btnPip"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Tải video phim"
-                android:padding="8dp"
+                android:padding="6dp"
                 android:src="@drawable/ic_download"
                 app:tint="@android:color/white" />
 
-            <!-- Nút Bật Chế Độ PiP (Picture-in-Picture) -->
+            <!-- Nút Bật Chế Độ PiP (Góc Trên Bên Phải) -->
             <ImageButton
                 android:id="@+id/btnPip"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
-                android:layout_centerVertical="true"
-                android:layout_marginEnd="6dp"
-                android:layout_toStartOf="@id/btnSpeed"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Thu nhỏ PiP"
-                android:padding="8dp"
-                android:src="@drawable/ic_pip"
-                app:tint="@android:color/white" />
-
-            <!-- Nút Chỉnh Tốc Độ Phát Video -->
-            <ImageButton
-                android:id="@+id/btnSpeed"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
-                android:layout_centerVertical="true"
-                android:layout_marginEnd="6dp"
-                android:layout_toStartOf="@id/btnQuality"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Tốc độ phát"
-                android:padding="8dp"
-                android:src="@drawable/ic_speed"
-                app:tint="@android:color/white" />
-
-            <!-- Nút Chỉnh Độ Phân Giải Video -->
-            <ImageButton
-                android:id="@+id/btnQuality"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
-                android:layout_centerVertical="true"
-                android:layout_marginEnd="6dp"
-                android:layout_toStartOf="@id/btnMaximize"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Chỉnh độ phân giải"
-                android:padding="8dp"
-                android:src="@drawable/ic_quality"
-                app:tint="@android:color/white" />
-
-            <!-- Nút Phóng To Màn Hình (Fullscreen Toggle) -->
-            <ImageButton
-                android:id="@+id/btnMaximize"
-                android:layout_width="38dp"
-                android:layout_height="38dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Phóng to màn hình"
-                android:padding="8dp"
-                android:src="@drawable/ic_fullscreen"
+                android:contentDescription="Thu nhỏ PiP"
+                android:padding="6dp"
+                android:src="@drawable/ic_pip"
                 app:tint="@android:color/white" />
 
         </RelativeLayout>
+
+        <!-- THANH ĐIỀU KHIỂN DƯỚI BÊN PHẢI (Gọn gàng chuẩn giao diện):
+             -10s | +10s | Cài Đặt (Sub/Dub/Speed) | HD | Phóng To -->
+        <LinearLayout
+            android:id="@+id/layoutBottomControls"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="10dp"
+            android:background="#B0000000"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="4dp">
+
+            <!-- Nút Tua Lùi 10 Giây (-10s) -->
+            <ImageButton
+                android:id="@+id/btnRewind10"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Tua lùi 10 giây"
+                android:padding="6dp"
+                android:src="@drawable/ic_rewind_10"
+                app:tint="@android:color/white" />
+
+            <!-- Nút Tua Tới 10 Giây (+10s) -->
+            <ImageButton
+                android:id="@+id/btnForward10"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Tua tới 10 giây"
+                android:padding="6dp"
+                android:src="@drawable/ic_forward_10"
+                app:tint="@android:color/white" />
+
+            <!-- Nút Cài Đặt (Tích hợp Chọn Phụ đề CC, Ngôn ngữ lồng tiếng Dub & Tốc độ phát Speed) -->
+            <ImageButton
+                android:id="@+id/btnSettings"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Cài đặt phát (Sub, Dub, Speed)"
+                android:padding="6dp"
+                android:src="@drawable/btn_setting"
+                app:tint="@android:color/white" />
+
+            <!-- Nút Nút HD / Chất lượng video -->
+            <ImageButton
+                android:id="@+id/btnQuality"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Chọn độ phân giải HD"
+                android:padding="6dp"
+                android:src="@drawable/ic_quality"
+                app:tint="@android:color/white" />
+
+            <!-- Nút Phóng To / Thu Nhỏ Màn Hình -->
+            <ImageButton
+                android:id="@+id/btnMaximize"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Phóng to màn hình"
+                android:padding="6dp"
+                android:src="@drawable/ic_fullscreen"
+                app:tint="@android:color/white" />
+
+        </LinearLayout>
 
     </FrameLayout>
 

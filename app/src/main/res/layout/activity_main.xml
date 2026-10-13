@@ -8,7 +8,7 @@
     android:background="#121212"
     tools:context=".MainActivity">
 
-    <!-- AppBarLayout giữ nguyên màu đen #121212 khi cuộn xuống (app:liftOnScroll="false") -->
+    <!-- AppBarLayout giữ nguyên màu đen #121212 khi cuộn xuống -->
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -16,7 +16,7 @@
         app:elevation="0dp"
         app:liftOnScroll="false">
 
-        <!-- HEADER: Logo, Search, Nút Đổi Chế Độ -->
+        <!-- HEADER TRÊN CÙNG: Logo, Nút Chuyển View, Tìm Kiếm, Admin -->
         <RelativeLayout
             android:id="@+id/layoutHeader"
             android:layout_width="match_parent"
@@ -44,51 +44,69 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:letterSpacing="0.05"
-                    android:text="PGCK2"
+                    android:text="PGCK2 CINEMA"
                     android:textColor="@android:color/white"
-                    android:textSize="22sp"
+                    android:textSize="20sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
+            <!-- Nút Đổi Chế Độ Admin -->
             <ImageButton
                 android:id="@+id/btnToggleAdmin"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Chế độ Admin"
-                android:padding="9dp"
+                android:padding="8dp"
                 android:src="@drawable/ic_admin"
                 app:tint="@android:color/white" />
 
+            <!-- Nút Bật/Tắt Tìm Kiếm -->
             <ImageButton
                 android:id="@+id/btnToggleSearch"
-                android:layout_width="42dp"
-                android:layout_height="42dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:layout_centerVertical="true"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="6dp"
                 android:layout_toStartOf="@id/btnToggleAdmin"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Tìm kiếm"
-                android:padding="9dp"
+                android:padding="8dp"
                 android:src="@drawable/ic_search"
                 app:tint="@android:color/white" />
+
+            <!-- Nút Chuyển Chế Độ Xem (Default vs All) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleViewMode"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="6dp"
+                android:layout_toStartOf="@id/btnToggleSearch"
+                android:paddingHorizontal="10dp"
+                android:text="Mặc Định"
+                android:textColor="#E50914"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
         </RelativeLayout>
 
-        <!-- Thanh Tìm Kiếm & Bộ Lọc Thể Loại 3 Trạng Thái (Yes / Blacklist / No) -->
+        <!-- THANH TÌM KIẾM & BỘ LỌC THỂ LOẠI LƯỚI GRID 3 CỘT (ĐÚNG SƠ ĐỒ) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardSearch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
             android:layout_marginTop="4dp"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="10dp"
             android:visibility="gone"
-            app:cardBackgroundColor="#1F1F28"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:strokeColor="#2E2E3C"
+            app:cardBackgroundColor="#181824"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="8dp"
+            app:strokeColor="#2E2E42"
             app:strokeWidth="1dp"
             tools:visibility="visible">
 
@@ -96,9 +114,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="10dp">
+                android:padding="12dp">
 
-                <!-- 1. Thanh Ô Nhập Tìm Kiếm Từ Khóa -->
+                <!-- 1. Thanh Ô Nhập Tìm Kiếm Từ Khóa (Yellow Search Bar) -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -108,8 +126,9 @@
                     <ImageView
                         android:layout_width="20dp"
                         android:layout_height="20dp"
+                        android:contentDescription="Search Icon"
                         android:src="@drawable/ic_search"
-                        app:tint="#888888" />
+                        app:tint="#E50914" />
 
                     <EditText
                         android:id="@+id/etSearchQuery"
@@ -130,33 +149,57 @@
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Clear Text"
                         android:padding="6dp"
                         android:src="@drawable/ic_close"
                         app:tint="#888888" />
                 </LinearLayout>
 
-                <!-- 2. Hướng dẫn Lọc Thể Loại (3 Trạng Thái) -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:layout_marginBottom="4dp"
-                    android:text="Lọc thể loại: [Bình thường] ➔ [✓ Bắt buộc có] ➔ [✕ Cấm/Blacklist]"
-                    android:textColor="#AAAAAA"
-                    android:textSize="11sp" />
+                <!-- Line phân cách mờ -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginVertical="8dp"
+                    android:background="#2E2E3E" />
 
-                <!-- 3. Danh Sách Thể Loại Cuộn Ngang (3-State Chips) -->
-                <HorizontalScrollView
+                <!-- 2. Header Lọc Thể Loại & Nút Đặt Lại -->
+                <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:scrollbars="none">
+                    android:layout_marginBottom="6dp">
 
-                    <com.google.android.material.chip.ChipGroup
-                        android:id="@+id/chipGroupGenresFilter"
+                    <TextView
+                        android:id="@+id/tvFilterInfo"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:singleLine="true" />
-                </HorizontalScrollView>
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:text="LỌC THỂ LOẠI (Bật ➔ ✓ Bắt buộc | ✕ Cấm)"
+                        android:textColor="#BBBBBB"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/btnResetFilter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:text="Đặt lại"
+                        android:textColor="#E50914"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </RelativeLayout>
+
+                <!-- 3. Danh Sách Thể Loại Xếp Thành Các Hàng Dọc (Flexbox Grid 3 Cột Chuẩn Sơ Đồ) -->
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chipGroupGenresFilter"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:chipSpacingHorizontal="6dp"
+                    app:chipSpacingVertical="6dp"
+                    app:singleLine="false"
+                    app:singleSelection="false" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -164,6 +207,7 @@
 
     <!-- NỘI DUNG CHÍNH (CUỘN ĐƯỢC) -->
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/nestedScrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
@@ -174,11 +218,11 @@
             android:orientation="vertical"
             android:paddingBottom="80dp">
 
-            <!-- 1. KHU VỰC "POPULAR" (SLIDER NỔI BẬT DẠNG CYCLE) -->
+            <!-- 1. KHU VỰC "POPULAR" (SLIDER NỔI BẬT) -->
             <RelativeLayout
                 android:id="@+id/layoutPopularSlider"
                 android:layout_width="match_parent"
-                android:layout_height="250dp"
+                android:layout_height="240dp"
                 android:layout_marginTop="8dp">
 
                 <androidx.viewpager2.widget.ViewPager2
@@ -186,71 +230,113 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent" />
 
-                <!-- Nút lướt qua lại cho Slider (Ẩn đi cho tàng hình) -->
-                <ImageButton
-                    android:id="@+id/btnPrevPopular"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+            </RelativeLayout>
+
+            <!-- 2. SECTION HEADER: TITLE & BUTTON SWITCH VIEW -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="8dp"
+                android:paddingHorizontal="16dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:layout_alignParentStart="true"
                     android:layout_centerVertical="true"
-                    android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_circle_translucent"
-                    android:src="@android:drawable/ic_media_previous"
-                    android:visibility="gone"
-                    app:tint="@android:color/white" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-                <ImageButton
-                    android:id="@+id/btnNextPopular"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                    <View
+                        android:layout_width="3dp"
+                        android:layout_height="18dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="#E50914" />
+
+                    <TextView
+                        android:id="@+id/tvSectionTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Recently Added (Top 10)"
+                        android:textColor="@android:color/white"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Nút chuyển sang xem Tất Cả / Phim Mới -->
+                <TextView
+                    android:id="@+id/btnSwitchViewMode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
                     android:layout_centerVertical="true"
-                    android:layout_marginEnd="8dp"
-                    android:background="@drawable/bg_circle_translucent"
-                    android:src="@android:drawable/ic_media_next"
-                    android:visibility="gone"
-                    app:tint="@android:color/white" />
+                    android:background="?attr/selectableItemBackground"
+                    android:padding="4dp"
+                    android:text="Xem tất cả ➔"
+                    android:textColor="#E50914"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
 
             </RelativeLayout>
 
-            <!-- 2. LABEL "RECENTLY ADDED / CONTINUE WATCHING" -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:layout_marginBottom="8dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingHorizontal="16dp">
-
-                <View
-                    android:layout_width="3dp"
-                    android:layout_height="18dp"
-                    android:layout_marginEnd="8dp"
-                    android:background="#E50914" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Recently Added"
-                    android:textColor="@android:color/white"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <!-- 3. DANH SÁCH PHIM DẠNG LƯỚT NGANG HOẶC DỌC (RECYCLERVIEW) -->
+            <!-- 3. DANH SÁCH PHIM RECYCLERVIEW (Ngang Top 10 hoặc Lưới 3 Cột 18 Phim/Trang) -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvVideos"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:clipToPadding="false"
-                android:paddingHorizontal="12dp"
-                tools:listitem="@layout/item_video" />
+                android:paddingHorizontal="8dp"
+                tools:listitem="@layout/item_video_horizontal" />
+
+            <!-- 4. THANH PHÂN TRANG CHO CHẾ ĐỘ XEM TẤT CẢ (LƯỚI 3 CỘT, 18 PHIM / TRANG) -->
+            <LinearLayout
+                android:id="@+id/layoutPagination"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPrevPage"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="◄ Trước"
+                    android:textColor="#E50914"
+                    android:textSize="12sp"
+                    app:strokeColor="#E50914" />
+
+                <TextView
+                    android:id="@+id/tvPageIndicator"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="12dp"
+                    android:textColor="@android:color/white"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    tools:text="Trang 1 / 3 (1-18)" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnNextPage"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sau ►"
+                    android:textColor="#E50914"
+                    android:textSize="12sp"
+                    app:strokeColor="#E50914" />
+
+            </LinearLayout>
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Nút Thêm Video mới (Nút nổi Red Accent cho Admin) -->
+    <!-- Nút Thêm Video mới (Red Accent Floating Action Button cho Admin) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAddVideo"
         android:layout_width="wrap_content"

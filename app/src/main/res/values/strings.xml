@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">PGCK 2</string>
+    <string name="the_loai">🏷️ Thể loại: %1$s</string>
 </resources>
