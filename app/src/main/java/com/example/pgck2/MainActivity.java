@@ -18,6 +18,8 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -49,6 +51,7 @@ import java.util.Map;
  * MainActivity hiển thị danh sách phim/video đẳng cấp Cinema.
  * Hỗ trợ ViewPager2 Slider phim nổi bật (Popular), Tìm kiếm thời gian thực,
  * Chuyển đổi 2 chế độ View (Mặc Định Cuộn Ngang Top 10 vs Xem Tất Cả Lưới 3 Cột 18 Phim/Trang Phân Trang),
+ * Màn hình Chi Tiết Phim Netflix Style (Trailer Preview + Quản lý Tập Phim Episodes + Năm/Tháng phát hành),
  * Bộ Lọc Thể Loại 3 Trạng Thái Netflix Style (Bình thường / ✓ Bắt buộc / ✕ Blacklist),
  * Quản lý Thể Loại Phim & Luồng Âm Thanh (Dub) / Phụ Đề (Sub CC) Admin,
  * Chế độ Admin đồng bộ trực tiếp với FIREBASE CLOUD FIRESTORE.
@@ -86,26 +89,24 @@ public class MainActivity extends AppCompatActivity {
     private MaterialButton btnNextPage;
     private TextView tvPageIndicator;
     private int currentPage = 1;
-    private static final int PAGE_SIZE = 18; // 18 phim mỗi trang (6 hàng x 3 cột)
+    private static final int PAGE_SIZE = 18;
 
     private boolean isAdminMode = false;
-    private boolean isAllViewMode = false; // false = Mặc Định (Ngang Top 10), true = Tất Cả (Lưới 3 Cột 18 Phim/Trang)
-    private FirebaseFirestore db; // Đối tượng Firestore
+    private boolean isAllViewMode = false;
+    private FirebaseFirestore db;
 
     // Quản lý Thể Loại Phim (Genres)
     private List<Genre> globalGenreList;
-    // Lọc Thể Loại 3 Trạng Thái: 0 = Normal/Ignore, 1 = YES/Include, 2 = BLACKLIST/Exclude
     private Map<String, Integer> genreFilterStates;
 
     // Launchers chọn Video và Ảnh
     private ActivityResultLauncher<String> videoPickerLauncher;
     private ActivityResultLauncher<String> imagePickerLauncher;
-    private ProgressDialog progressDialog; // Tiến trình hiển thị khi đang upload
+    private ProgressDialog progressDialog;
 
-    private EditText currentEtVideoUrl;    // Giữ tham chiếu ô nhập URL Video
-    private EditText currentEtThumbnailUrl;// Giữ tham chiếu ô nhập URL Ảnh Bìa
+    private EditText currentEtVideoUrl;
+    private EditText currentEtThumbnailUrl;
 
-    // Handler tự động cuộn Slider Popular mỗi 12 giây
     private final Handler sliderHandler = new Handler(Looper.getMainLooper());
     private final Runnable sliderRunnable = new Runnable() {
         @Override
@@ -118,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
                     viewPagerPopular.setCurrentItem(nextItem, true);
                 }
             }
-            sliderHandler.postDelayed(this, 12000); // 12 giây
+            sliderHandler.postDelayed(this, 12000);
         }
     };
 
@@ -132,7 +133,6 @@ public class MainActivity extends AppCompatActivity {
         progressDialog = new ProgressDialog(this);
         progressDialog.setCancelable(false);
 
-        // Đăng ký Launcher chọn & upload VIDEO từ thiết bị
         videoPickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 uri -> {
@@ -159,7 +159,6 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        // Đăng ký Launcher chọn & upload ẢNH BÌA từ thiết bị
         imagePickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 uri -> {
@@ -186,21 +185,16 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        // Khởi tạo danh sách ban đầu
         fullVideoList = new ArrayList<>();
         currentFilteredList = new ArrayList<>();
         popularVideoList = new ArrayList<>();
         globalGenreList = new ArrayList<>();
         genreFilterStates = new HashMap<>();
 
-        // Nạp dữ liệu mặc định lập tức vào RAM để UI hiển thị ngay 100% không bị đen
         seedLocalSampleData();
-
-        // Cài đặt Adapters & Chế độ View
         setupAdapter();
         applyViewMode();
 
-        // Khởi tạo Firestore và nạp dữ liệu đồng bộ
         try {
             db = FirebaseFirestore.getInstance();
             loadGenresFromFirebase();
@@ -209,7 +203,6 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "Lỗi kết nối Firebase Firestore", e);
         }
 
-        // Cài đặt các sự kiện
         setupSearchAndAdminEvents();
     }
 
@@ -237,10 +230,6 @@ public class MainActivity extends AppCompatActivity {
         tvPageIndicator = findViewById(R.id.tvPageIndicator);
     }
 
-    /**
-     * Nạp dữ liệu phim và thể loại mẫu lập tức vào RAM khi mở app.
-     * Đảm bảo ứng dụng KHÔNG BAO GIỜ bị màn hình đen hay trống trải khi chờ Firestore.
-     */
     private void seedLocalSampleData() {
         String[] defaults = {"Hành Động", "Hài Hước", "Viễn Tưởng", "Tình Cảm", "Kinh Dị", "Hoạt Hình", "Phiêu Lưu"};
         globalGenreList.clear();
@@ -252,16 +241,23 @@ public class MainActivity extends AppCompatActivity {
         fullVideoList.clear();
         Video v1 = new Video("Big Buck Bunny 4K", "Bộ phim hoạt hình 3D nổi tiếng kể về chú thỏ khổng lồ Bunny trong rừng xanh.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", true);
         v1.setGenres(new ArrayList<>(Arrays.asList("Hoạt Hình", "Hài Hước", "Phiêu Lưu")));
+        v1.setReleaseYear("2024");
+        v1.setReleaseMonth("10");
         v1.getAudioTracks().add(new AudioTrackOption("Tiếng Việt (Lồng tiếng / Dub)", "vi", ""));
         v1.getAudioTracks().add(new AudioTrackOption("English (Original)", "en", ""));
         v1.getSubtitleTracks().add(new SubtitleOption("Tiếng Việt (VTT)", "vi", "https://storage.googleapis.com/exoplayer-test-media-1/webvtt/numeric-subtitles-en.vtt"));
         v1.getSubtitleTracks().add(new SubtitleOption("English (VTT)", "en", "https://storage.googleapis.com/exoplayer-test-media-1/webvtt/numeric-subtitles-en.vtt"));
+        v1.getEpisodes().add(new Episode(1, "Tập 1: Rừng Xanh", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8"));
+        v1.getEpisodes().add(new Episode(2, "Tập 2: Thỏ Bunny Khổng Lồ", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8"));
+        v1.getEpisodes().add(new Episode(3, "Tập 3: Cuộc Chiến Cuối Cùng", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8"));
 
         Video v2 = new Video("Tears of Steel Sci-Fi", "Phim viễn tưởng kỹ xảo đỉnh cao về cuộc chiến bảo vệ Trái Đất.", "https://img.youtube.com/vi/e1Ebe1sB70M/hqdefault.jpg", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", true);
         v2.setGenres(new ArrayList<>(Arrays.asList("Viễn Tưởng", "Hành Động")));
+        v2.setReleaseYear("2024");
 
         Video v3 = new Video("Sintel Fantasy Adventure", "Hành trình tìm kiếm rồng con kỳ thú của cô gái trẻ Sintel.", "https://img.youtube.com/vi/e1Ebe1sB70M/hqdefault.jpg", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", true);
         v3.setGenres(new ArrayList<>(Arrays.asList("Phiêu Lưu", "Hoạt Hình")));
+        v3.setReleaseYear("2023");
 
         Video v4 = new Video("Phim Chó Thông Minh", "Những khoảnh khắc đáng yêu và thông minh của chú chó cún.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://www.youtube.com/watch?v=aqz-KE-bpKQ", false);
         v4.setGenres(new ArrayList<>(Arrays.asList("Hài Hước", "Hành Động")));
@@ -476,48 +472,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void openPlayerForVideo(Video video) {
-        ArrayList<String> audioNames = new ArrayList<>();
-        ArrayList<String> audioLangs = new ArrayList<>();
-        ArrayList<String> audioUrls = new ArrayList<>();
-
-        if (video.getAudioTracks() != null) {
-            for (AudioTrackOption audio : video.getAudioTracks()) {
-                audioNames.add(audio.getName());
-                audioLangs.add(audio.getLanguage());
-                audioUrls.add(audio.getUrl());
-            }
-        }
-
-        ArrayList<String> subNames = new ArrayList<>();
-        ArrayList<String> subLangs = new ArrayList<>();
-        ArrayList<String> subUrls = new ArrayList<>();
-
-        if (video.getSubtitleTracks() != null) {
-            for (SubtitleOption sub : video.getSubtitleTracks()) {
-                subNames.add(sub.getName());
-                subLangs.add(sub.getLanguage());
-                subUrls.add(sub.getSubtitleUrl());
-            }
-        }
-
-        Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
-        intent.putExtra(PlayerActivity.EXTRA_VIDEO_URL, video.getVideoUrl());
-        intent.putExtra(PlayerActivity.EXTRA_VIDEO_TITLE, video.getTitle());
-        intent.putExtra(PlayerActivity.EXTRA_VIDEO_DESC, video.getDescription());
-        intent.putExtra("extra_video_genres", video.getGenresString());
-        intent.putStringArrayListExtra("extra_audio_names", audioNames);
-        intent.putStringArrayListExtra("extra_audio_langs", audioLangs);
-        intent.putStringArrayListExtra("extra_audio_urls", audioUrls);
-        intent.putStringArrayListExtra("extra_sub_names", subNames);
-        intent.putStringArrayListExtra("extra_sub_langs", subLangs);
-        intent.putStringArrayListExtra("extra_sub_urls", subUrls);
-        startActivity(intent);
+        if (video == null) return;
+        MovieDetailBottomSheetDialog detailDialog = new MovieDetailBottomSheetDialog(video);
+        detailDialog.show(getSupportFragmentManager(), "MovieDetailBottomSheetDialog");
     }
 
     private void setupAdapter() {
         videoAdapter = new VideoAdapter(
                 this, currentFilteredList,
-                video -> openPlayerForVideo(video),
+                this::openPlayerForVideo,
                 (video, position) -> showAddEditVideoDialog(video),
                 (video, position) -> confirmDeleteVideo(video)
         );
@@ -653,6 +616,9 @@ public class MainActivity extends AppCompatActivity {
         applyViewMode();
     }
 
+    /**
+     * Dialog Thêm / Sửa Video Admin nâng cấp chuyên nghiệp (Năm, Tháng, Loại Phim, Quản lý Tập Episodes).
+     */
     private void showAddEditVideoDialog(Video videoToEdit) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_edit_video, null);
@@ -661,16 +627,24 @@ public class MainActivity extends AppCompatActivity {
         TextView tvDialogTitle = dialogView.findViewById(R.id.tvDialogTitle);
         EditText etTitle = dialogView.findViewById(R.id.etDialogTitle);
         EditText etDescription = dialogView.findViewById(R.id.etDialogDescription);
+        EditText etYear = dialogView.findViewById(R.id.etDialogYear);
+        EditText etMonth = dialogView.findViewById(R.id.etDialogMonth);
+        RadioButton rbTypeStandard = dialogView.findViewById(R.id.rbTypeStandard);
+        RadioButton rbTypeTrailer = dialogView.findViewById(R.id.rbTypeTrailer);
+        CheckBox cbIsPopular = dialogView.findViewById(R.id.cbIsPopular);
+
         TextView tvSelectedGenres = dialogView.findViewById(R.id.tvSelectedGenres);
         Button btnSelectGenres = dialogView.findViewById(R.id.btnSelectGenres);
         Button btnManageGenres = dialogView.findViewById(R.id.btnManageGenres);
-        CheckBox cbIsPopular = dialogView.findViewById(R.id.cbIsPopular);
+
+        Button btnManageEpisodes = dialogView.findViewById(R.id.btnManageEpisodes);
+        TextView tvEpisodesSummary = dialogView.findViewById(R.id.tvEpisodesSummary);
+
         EditText etVideoUrl = dialogView.findViewById(R.id.etDialogVideoUrl);
         EditText etThumbnailUrl = dialogView.findViewById(R.id.etDialogThumbnailUrl);
         Button btnPickVideo = dialogView.findViewById(R.id.btnPickVideo);
         Button btnPickImage = dialogView.findViewById(R.id.btnPickImage);
 
-        // Ánh xạ nút bấm Quản lý Luồng Âm Thanh & Phụ Đề
         Button btnManageAudioTracks = dialogView.findViewById(R.id.btnManageAudioTracks);
         TextView tvAudioTracksSummary = dialogView.findViewById(R.id.tvAudioTracksSummary);
         Button btnManageSubtitles = dialogView.findViewById(R.id.btnManageSubtitles);
@@ -679,24 +653,29 @@ public class MainActivity extends AppCompatActivity {
         List<String> tempSelectedGenres = new ArrayList<>();
         List<AudioTrackOption> tempAudioTracks = new ArrayList<>();
         List<SubtitleOption> tempSubtitleTracks = new ArrayList<>();
+        List<Episode> tempEpisodes = new ArrayList<>();
 
         boolean isEditMode = (videoToEdit != null);
         if (isEditMode) {
             tvDialogTitle.setText("Sửa Thông Tin Video");
             etTitle.setText(videoToEdit.getTitle());
             etDescription.setText(videoToEdit.getDescription());
+            if (etYear != null) etYear.setText(videoToEdit.getReleaseYear());
+            if (etMonth != null) etMonth.setText(videoToEdit.getReleaseMonth());
+            if (rbTypeTrailer != null && videoToEdit.isTrailer()) {
+                rbTypeTrailer.setChecked(true);
+            } else if (rbTypeStandard != null) {
+                rbTypeStandard.setChecked(true);
+            }
+
             cbIsPopular.setChecked(videoToEdit.isPopular());
             etVideoUrl.setText(videoToEdit.getVideoUrl());
             etThumbnailUrl.setText(videoToEdit.getThumbnailUrl());
-            if (videoToEdit.getGenres() != null) {
-                tempSelectedGenres.addAll(videoToEdit.getGenres());
-            }
-            if (videoToEdit.getAudioTracks() != null) {
-                tempAudioTracks.addAll(videoToEdit.getAudioTracks());
-            }
-            if (videoToEdit.getSubtitleTracks() != null) {
-                tempSubtitleTracks.addAll(videoToEdit.getSubtitleTracks());
-            }
+
+            if (videoToEdit.getGenres() != null) tempSelectedGenres.addAll(videoToEdit.getGenres());
+            if (videoToEdit.getAudioTracks() != null) tempAudioTracks.addAll(videoToEdit.getAudioTracks());
+            if (videoToEdit.getSubtitleTracks() != null) tempSubtitleTracks.addAll(videoToEdit.getSubtitleTracks());
+            if (videoToEdit.getEpisodes() != null) tempEpisodes.addAll(videoToEdit.getEpisodes());
         } else {
             tvDialogTitle.setText("Thêm Video Mới (Firebase)");
             cbIsPopular.setChecked(false);
@@ -705,6 +684,7 @@ public class MainActivity extends AppCompatActivity {
         updateSelectedGenresText(tvSelectedGenres, tempSelectedGenres);
         updateAudioTracksSummaryText(tvAudioTracksSummary, tempAudioTracks);
         updateSubtitlesSummaryText(tvSubtitlesSummary, tempSubtitleTracks);
+        updateEpisodesSummaryText(tvEpisodesSummary, tempEpisodes);
 
         btnSelectGenres.setOnClickListener(v -> {
             String[] genreNames = new String[globalGenreList.size()];
@@ -733,12 +713,14 @@ public class MainActivity extends AppCompatActivity {
 
         btnManageGenres.setOnClickListener(v -> showAdminManageGenresDialog(tvSelectedGenres, tempSelectedGenres));
 
-        // Sự kiện bấm nút Quản lý Luồng Âm Thanh (Dub)
+        if (btnManageEpisodes != null) {
+            btnManageEpisodes.setOnClickListener(v -> showAdminManageEpisodesDialog(tvEpisodesSummary, tempEpisodes));
+        }
+
         if (btnManageAudioTracks != null) {
             btnManageAudioTracks.setOnClickListener(v -> showAdminManageAudioTracksDialog(tvAudioTracksSummary, tempAudioTracks));
         }
 
-        // Sự kiện bấm nút Quản lý Phụ Đề Rời (Sub CC)
         if (btnManageSubtitles != null) {
             btnManageSubtitles.setOnClickListener(v -> showAdminManageSubtitlesDialog(tvSubtitlesSummary, tempSubtitleTracks));
         }
@@ -756,6 +738,9 @@ public class MainActivity extends AppCompatActivity {
         builder.setPositiveButton(isEditMode ? "Cập Nhật" : "Thêm Mới", (dialog, which) -> {
             String title = etTitle.getText().toString().trim();
             String description = etDescription.getText().toString().trim();
+            String year = etYear != null ? etYear.getText().toString().trim() : "2024";
+            String month = etMonth != null ? etMonth.getText().toString().trim() : "10";
+            String type = (rbTypeTrailer != null && rbTypeTrailer.isChecked()) ? Video.TYPE_TRAILER : Video.TYPE_STANDARD;
             boolean isPopular = cbIsPopular.isChecked();
             String videoUrl = etVideoUrl.getText().toString().trim();
             String thumbnailUrl = etThumbnailUrl.getText().toString().trim();
@@ -769,18 +754,26 @@ public class MainActivity extends AppCompatActivity {
             if (isEditMode) {
                 videoToEdit.setTitle(title);
                 videoToEdit.setDescription(description);
+                videoToEdit.setReleaseYear(year);
+                videoToEdit.setReleaseMonth(month);
+                videoToEdit.setVideoType(type);
                 videoToEdit.setPopular(isPopular);
                 videoToEdit.setVideoUrl(videoUrl);
                 videoToEdit.setThumbnailUrl(thumbnailUrl);
                 videoToEdit.setGenres(new ArrayList<>(tempSelectedGenres));
                 videoToEdit.setAudioTracks(new ArrayList<>(tempAudioTracks));
                 videoToEdit.setSubtitleTracks(new ArrayList<>(tempSubtitleTracks));
+                videoToEdit.setEpisodes(new ArrayList<>(tempEpisodes));
                 videoTarget = videoToEdit;
             } else {
                 videoTarget = new Video(title, description, thumbnailUrl, videoUrl, isPopular);
+                videoTarget.setReleaseYear(year);
+                videoTarget.setReleaseMonth(month);
+                videoTarget.setVideoType(type);
                 videoTarget.setGenres(new ArrayList<>(tempSelectedGenres));
                 videoTarget.setAudioTracks(new ArrayList<>(tempAudioTracks));
                 videoTarget.setSubtitleTracks(new ArrayList<>(tempSubtitleTracks));
+                videoTarget.setEpisodes(new ArrayList<>(tempEpisodes));
                 fullVideoList.add(0, videoTarget);
             }
 
@@ -839,9 +832,196 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void updateEpisodesSummaryText(TextView tv, List<Episode> list) {
+        if (tv == null) return;
+        if (list == null || list.isEmpty()) {
+            tv.setText("📺 Danh sách Tập Phim: Chưa có tập nào");
+        } else {
+            StringBuilder sb = new StringBuilder("📺 Danh sách Tập Phim (" + list.size() + " Tập): ");
+            for (int i = 0; i < list.size(); i++) {
+                sb.append(list.get(i).getTitle());
+                if (i < list.size() - 1) sb.append(", ");
+            }
+            tv.setText(sb.toString());
+        }
+    }
+
     /**
-     * Dialog Admin Quản Lý Luồng Lồng Tiếng Alternate Dubbing (Tạo mới hoặc Xóa Luồng Âm Thanh).
+     * Dialog Admin Quản Lý Các Tập Phim (Episodes) - Cho phép Thêm/Sửa/Xóa từng tập kèm Dub & Sub CC riêng biệt!
      */
+    private void showAdminManageEpisodesDialog(TextView tvSummary, List<Episode> tempEpisodes) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("📺 Quản Lý Các Tập Phim (Episodes)");
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(32, 16, 32, 16);
+
+        Button btnAddNew = new Button(this);
+        btnAddNew.setText("➕ Thêm Tập Phim Mới");
+        layout.addView(btnAddNew);
+
+        TextView tvHeader = new TextView(this);
+        tvHeader.setText("\nDanh sách tập phim hiện có (Bấm Sửa / Xóa):");
+        tvHeader.setTypeface(null, Typeface.BOLD);
+        layout.addView(tvHeader);
+
+        builder.setView(layout);
+        AlertDialog dialog = builder.setNegativeButton("Đóng", null).create();
+
+        btnAddNew.setOnClickListener(v -> {
+            dialog.dismiss();
+            showAddEditEpisodeDialog(null, tempEpisodes, () -> {
+                updateEpisodesSummaryText(tvSummary, tempEpisodes);
+                showAdminManageEpisodesDialog(tvSummary, tempEpisodes);
+            });
+        });
+
+        for (Episode ep : tempEpisodes) {
+            LinearLayout itemRow = new LinearLayout(this);
+            itemRow.setOrientation(LinearLayout.HORIZONTAL);
+            itemRow.setPadding(0, 8, 0, 8);
+
+            TextView tvEpName = new TextView(this);
+            tvEpName.setText(ep.getTitle());
+            tvEpName.setTextSize(14);
+            tvEpName.setTypeface(null, Typeface.BOLD);
+            LinearLayout.LayoutParams lpText = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            tvEpName.setLayoutParams(lpText);
+            itemRow.addView(tvEpName);
+
+            Button btnEdit = new Button(this);
+            btnEdit.setText("✏️ Sửa");
+            btnEdit.setOnClickListener(v -> {
+                dialog.dismiss();
+                showAddEditEpisodeDialog(ep, tempEpisodes, () -> {
+                    updateEpisodesSummaryText(tvSummary, tempEpisodes);
+                    showAdminManageEpisodesDialog(tvSummary, tempEpisodes);
+                });
+            });
+            itemRow.addView(btnEdit);
+
+            Button btnDelete = new Button(this);
+            btnDelete.setText("🗑️ Xóa");
+            btnDelete.setTextColor(Color.RED);
+            btnDelete.setOnClickListener(v -> {
+                tempEpisodes.remove(ep);
+                updateEpisodesSummaryText(tvSummary, tempEpisodes);
+                Toast.makeText(this, "Đã xóa tập phim!", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+                showAdminManageEpisodesDialog(tvSummary, tempEpisodes);
+            });
+            itemRow.addView(btnDelete);
+
+            layout.addView(itemRow);
+        }
+
+        dialog.show();
+    }
+
+    /**
+     * Dialog Thêm / Sửa Chi Tiết Từng Tập Phim (Gồm URL Video Tập, Dubbing Riêng & Subtitles CC Riêng).
+     */
+    private void showAddEditEpisodeDialog(Episode epToEdit, List<Episode> tempEpisodes, Runnable onUpdated) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(epToEdit != null ? "✏️ Sửa Tập Phim" : "➕ Thêm Tập Phim Mới");
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(32, 16, 32, 16);
+
+        EditText etNumber = new EditText(this);
+        etNumber.setHint("Số tập (vd: 1, 2, 3)");
+        etNumber.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        layout.addView(etNumber);
+
+        EditText etTitle = new EditText(this);
+        etTitle.setHint("Tên tập phim (vd: Tập 1: Khởi đầu)");
+        layout.addView(etTitle);
+
+        EditText etUrl = new EditText(this);
+        etUrl.setHint("URL Video tập này (.mp4 / .m3u8 / YouTube)");
+        layout.addView(etUrl);
+
+        Button btnPickVideo = new Button(this);
+        btnPickVideo.setText("📁 Upload Video Cho Tập Này");
+        btnPickVideo.setOnClickListener(v -> {
+            currentEtVideoUrl = etUrl;
+            videoPickerLauncher.launch("video/*");
+        });
+        layout.addView(btnPickVideo);
+
+        TextView tvEpAudioSummary = new TextView(this);
+        tvEpAudioSummary.setPadding(0, 12, 0, 4);
+        layout.addView(tvEpAudioSummary);
+
+        Button btnManageEpAudio = new Button(this);
+        btnManageEpAudio.setText("🎙️ Quản Lý Dub Cho Tập Này");
+        layout.addView(btnManageEpAudio);
+
+        TextView tvEpSubSummary = new TextView(this);
+        tvEpSubSummary.setPadding(0, 12, 0, 4);
+        layout.addView(tvEpSubSummary);
+
+        Button btnManageEpSub = new Button(this);
+        btnManageEpSub.setText("💬 Quản Lý Sub CC Cho Tập Này");
+        layout.addView(btnManageEpSub);
+
+        List<AudioTrackOption> epAudioTracks = new ArrayList<>();
+        List<SubtitleOption> epSubtitleTracks = new ArrayList<>();
+
+        if (epToEdit != null) {
+            etNumber.setText(String.valueOf(epToEdit.getEpisodeNumber()));
+            etTitle.setText(epToEdit.getTitle());
+            etUrl.setText(epToEdit.getVideoUrl());
+            if (epToEdit.getAudioTracks() != null) epAudioTracks.addAll(epToEdit.getAudioTracks());
+            if (epToEdit.getSubtitleTracks() != null) epSubtitleTracks.addAll(epToEdit.getSubtitleTracks());
+        } else {
+            etNumber.setText(String.valueOf(tempEpisodes.size() + 1));
+        }
+
+        updateAudioTracksSummaryText(tvEpAudioSummary, epAudioTracks);
+        updateSubtitlesSummaryText(tvEpSubSummary, epSubtitleTracks);
+
+        btnManageEpAudio.setOnClickListener(v -> showAdminManageAudioTracksDialog(tvEpAudioSummary, epAudioTracks));
+        btnManageEpSub.setOnClickListener(v -> showAdminManageSubtitlesDialog(tvEpSubSummary, epSubtitleTracks));
+
+        builder.setView(layout);
+        builder.setPositiveButton(epToEdit != null ? "Cập Nhật Tập" : "Lưu Tập Mới", (dialog, which) -> {
+            String numStr = etNumber.getText().toString().trim();
+            String title = etTitle.getText().toString().trim();
+            String url = etUrl.getText().toString().trim();
+
+            int epNum = 1;
+            try {
+                epNum = Integer.parseInt(numStr);
+            } catch (Exception ignored) {}
+
+            if (url.isEmpty()) {
+                Toast.makeText(this, "Vui lòng nhập URL video cho tập phim!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (epToEdit != null) {
+                epToEdit.setEpisodeNumber(epNum);
+                epToEdit.setTitle(title.isEmpty() ? "Tập " + epNum : title);
+                epToEdit.setVideoUrl(url);
+                epToEdit.setAudioTracks(new ArrayList<>(epAudioTracks));
+                epToEdit.setSubtitleTracks(new ArrayList<>(epSubtitleTracks));
+            } else {
+                Episode newEp = new Episode(epNum, title.isEmpty() ? "Tập " + epNum : title, url);
+                newEp.setAudioTracks(new ArrayList<>(epAudioTracks));
+                newEp.setSubtitleTracks(new ArrayList<>(epSubtitleTracks));
+                tempEpisodes.add(newEp);
+            }
+
+            if (onUpdated != null) onUpdated.run();
+        });
+
+        builder.setNegativeButton("Hủy", null);
+        builder.show();
+    }
+
     private void showAdminManageAudioTracksDialog(TextView tvSummary, List<AudioTrackOption> tempAudioTracks) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("🎙️ Quản Lý Luồng Lồng Tiếng (Dub)");
@@ -911,9 +1091,6 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    /**
-     * Dialog Admin Quản Lý Phụ Đề Rời Subtitles CC (Tạo mới hoặc Xóa File Phụ Đề).
-     */
     private void showAdminManageSubtitlesDialog(TextView tvSummary, List<SubtitleOption> tempSubtitleTracks) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("💬 Quản Lý Phụ Đề Rời (Subtitles CC)");

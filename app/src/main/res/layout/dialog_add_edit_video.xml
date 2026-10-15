@@ -22,7 +22,7 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
-        <!-- 1. CARD 1: THÔNG TIN PHIM CƠ BẢN -->
+        <!-- 1. CARD 1: THÔNG TIN PHIM CƠ BẢN (Tên, Mô tả, Năm, Tháng, Loại Phim) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -67,7 +67,7 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
+                    android:layout_marginBottom="10dp"
                     android:hint="Mô tả video">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -78,6 +78,83 @@
                         android:lines="3" />
 
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Hàng Ô Nhập Năm & Tháng Phát Hành -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:baselineAligned="false"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:hint="Năm Phát Hành">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etDialogYear"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"
+                            android:text="2024" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:hint="Tháng Phát Hành">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etDialogMonth"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="number"
+                            android:text="10" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                </LinearLayout>
+
+                <!-- Chọn Loại Video: Phim Chiếu Rạp/Series vs Trailer Preview -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:text="Loại Phim / Video:"
+                    android:textColor="#555555"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <RadioGroup
+                    android:id="@+id/rgVideoType"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/rbTypeStandard"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="16dp"
+                        android:checked="true"
+                        android:text="Phim Chiếu Rạp / Series"
+                        android:textSize="12sp" />
+
+                    <com.google.android.material.radiobutton.MaterialRadioButton
+                        android:id="@+id/rbTypeTrailer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Trailer Xem Trước"
+                        android:textSize="12sp" />
+
+                </RadioGroup>
 
                 <!-- CheckBox chọn Phim Nổi Bật (Popular Slider) -->
                 <com.google.android.material.checkbox.MaterialCheckBox
@@ -151,7 +228,47 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 3. CARD 3: NGUỒN VIDEO GỐC (VIDEO SOURCE & UPLOAD) -->
+        <!-- 3. CARD 3: QUẢN LÝ CÁC TẬP PHIM (EPISODES MANAGER) -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="#F8F9FA"
+            app:cardCornerRadius="10dp"
+            app:cardElevation="2dp"
+            app:strokeColor="#DDDDDD"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/tvEpisodesSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
+                    android:textColor="#333333"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    tools:text="📺 Danh sách Tập: Tập 1, Tập 2, Tập 3" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnManageEpisodes"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📺 Quản Lý Các Tập Phim (Episodes)"
+                    android:textColor="#2E7D32"
+                    android:textSize="12sp"
+                    app:strokeColor="#2E7D32" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 4. CARD 4: NGUỒN VIDEO GỐC (VIDEO SOURCE & UPLOAD) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -172,7 +289,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
-                    android:text="🎬 Nguồn Video Gốc (File Video / Link)"
+                    android:text="🎬 Nguồn Video Gốc / Trailer (Link / Upload)"
                     android:textColor="#333333"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -207,7 +324,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 4. CARD 4: QUẢN LÝ DUB BẮT MẮT (Multi-Audio Tracks Admin) -->
+        <!-- 5. CARD 5: QUẢN LÝ DUB BẮT MẮT (Multi-Audio Tracks Admin) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -247,7 +364,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 5. CARD 5: QUẢN LÝ SUB BẮT MẮT (Multi-Subtitles CC Admin) -->
+        <!-- 6. CARD 6: QUẢN LÝ SUB BẮT MẮT (Multi-Subtitles CC Admin) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -287,7 +404,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- 6. CARD 6: QUẢN LÝ ẢNH BÌA / THUMBNAIL PNG (THUMBNAIL IMAGE & UPLOAD) -->
+        <!-- 7. CARD 7: QUẢN LÝ ẢNH BÌA / THUMBNAIL PNG (THUMBNAIL IMAGE & UPLOAD) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

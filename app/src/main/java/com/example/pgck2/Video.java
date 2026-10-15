@@ -8,10 +8,14 @@ import java.util.regex.Pattern;
 
 /**
  * Model class đại diện cho một video/bộ phim trong ứng dụng.
- * Chứa tiêu đề, mô tả, danh sách thể loại (genres), danh sách luồng âm thanh rời (audioTracks),
- * danh sách phụ đề rời (subtitleTracks), đường dẫn hình ảnh, URL video và trạng thái Nổi bật (isPopular).
+ * Chứa thông tin Tiêu đề, Mô tả, Thể loại, Năm/Tháng phát hành (releaseYear/Month),
+ * Loại Phim (STANDARD vs TRAILER), Danh sách các Tập Phim (Episodes),
+ * Luồng lồng tiếng (Audio Dubs) và Phụ đề rời (Subtitles CC).
  */
 public class Video {
+    public static final String TYPE_STANDARD = "STANDARD";
+    public static final String TYPE_TRAILER = "TRAILER";
+
     private String id;                           // Mã định danh duy nhất của video
     private String title;                        // Tên phim / Tiêu đề video
     private String description;                  // Mô tả nội dung video / phim
@@ -24,41 +28,36 @@ public class Video {
     private List<AudioTrackOption> audioTracks;  // Danh sách luồng lồng tiếng lồng ghép (Multi-Audio Dubs)
     private List<SubtitleOption> subtitleTracks; // Danh sách phụ đề rời lồng ghép (Multi-Subtitles CC)
 
-    /**
-     * Constructor không tham số bắt buộc để Firebase Firestore ép kiểu toObject(Video.class).
-     */
+    // Bổ sung các trường mới theo yêu cầu
+    private String releaseYear;                  // Năm phát hành (vd: "2024")
+    private String releaseMonth;                 // Tháng phát hành (vd: "10")
+    private String videoType;                    // Loại video ("STANDARD" hoặc "TRAILER")
+    private List<Episode> episodes;              // Danh sách các tập phim (Episodes)
+
     public Video() {
         this.genres = new ArrayList<>();
         this.subtitleUrl = "";
         this.subtitleLanguage = "vi";
         this.audioTracks = new ArrayList<>();
         this.subtitleTracks = new ArrayList<>();
+        this.releaseYear = "2024";
+        this.releaseMonth = "10";
+        this.videoType = TYPE_STANDARD;
+        this.episodes = new ArrayList<>();
     }
 
-    /**
-     * Constructor ngắn gọn.
-     */
     public Video(String title, String thumbnailUrl, String videoUrl) {
         this(UUID.randomUUID().toString(), title, "", thumbnailUrl, videoUrl, false, new ArrayList<>(), "", "vi");
     }
 
-    /**
-     * Constructor gồm tiêu đề và mô tả.
-     */
     public Video(String title, String description, String thumbnailUrl, String videoUrl) {
         this(UUID.randomUUID().toString(), title, description, thumbnailUrl, videoUrl, false, new ArrayList<>(), "", "vi");
     }
 
-    /**
-     * Constructor gồm 5 tham số có trạng thái Popular.
-     */
     public Video(String title, String description, String thumbnailUrl, String videoUrl, boolean isPopular) {
         this(UUID.randomUUID().toString(), title, description, thumbnailUrl, videoUrl, isPopular, new ArrayList<>(), "", "vi");
     }
 
-    /**
-     * Constructor đầy đủ tham số kèm Phụ Đề Rời.
-     */
     public Video(String id, String title, String description, String thumbnailUrl, String videoUrl, boolean isPopular, List<String> genres, String subtitleUrl, String subtitleLanguage) {
         this.id = id != null && !id.isEmpty() ? id : UUID.randomUUID().toString();
         this.title = title != null ? title : "";
@@ -70,6 +69,10 @@ public class Video {
         this.subtitleLanguage = subtitleLanguage != null && !subtitleLanguage.isEmpty() ? subtitleLanguage : "vi";
         this.audioTracks = new ArrayList<>();
         this.subtitleTracks = new ArrayList<>();
+        this.releaseYear = "2024";
+        this.releaseMonth = "10";
+        this.videoType = TYPE_STANDARD;
+        this.episodes = new ArrayList<>();
 
         if ((thumbnailUrl == null || thumbnailUrl.trim().isEmpty()) && isYouTubeVideo()) {
             String youtubeId = getYouTubeVideoId();
@@ -170,6 +173,45 @@ public class Video {
 
     public void setSubtitleTracks(List<SubtitleOption> subtitleTracks) {
         this.subtitleTracks = subtitleTracks != null ? subtitleTracks : new ArrayList<>();
+    }
+
+    public String getReleaseYear() {
+        return releaseYear != null && !releaseYear.trim().isEmpty() ? releaseYear : "2024";
+    }
+
+    public void setReleaseYear(String releaseYear) {
+        this.releaseYear = releaseYear;
+    }
+
+    public String getReleaseMonth() {
+        return releaseMonth != null && !releaseMonth.trim().isEmpty() ? releaseMonth : "10";
+    }
+
+    public void setReleaseMonth(String releaseMonth) {
+        this.releaseMonth = releaseMonth;
+    }
+
+    public String getVideoType() {
+        return videoType != null && !videoType.trim().isEmpty() ? videoType : TYPE_STANDARD;
+    }
+
+    public void setVideoType(String videoType) {
+        this.videoType = videoType;
+    }
+
+    public boolean isTrailer() {
+        return TYPE_TRAILER.equalsIgnoreCase(videoType);
+    }
+
+    public List<Episode> getEpisodes() {
+        if (episodes == null) {
+            episodes = new ArrayList<>();
+        }
+        return episodes;
+    }
+
+    public void setEpisodes(List<Episode> episodes) {
+        this.episodes = episodes != null ? episodes : new ArrayList<>();
     }
 
     public String getGenresString() {

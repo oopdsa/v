@@ -39,7 +39,12 @@ import androidx.media3.common.PlaybackException;
 import androidx.media3.common.PlaybackParameters;
 import androidx.media3.common.Player;
 import androidx.media3.common.TrackSelectionParameters;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.source.MediaSource;
+import androidx.media3.exoplayer.source.MergingMediaSource;
+import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 import androidx.media3.session.MediaSession;
 import androidx.media3.ui.PlayerView;
 
@@ -47,11 +52,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import androidx.media3.exoplayer.source.MediaSource;
-import androidx.media3.exoplayer.source.ProgressiveMediaSource;
-import androidx.media3.exoplayer.source.MergingMediaSource;
-import androidx.media3.datasource.DefaultDataSource;
-import androidx.media3.common.util.UnstableApi;
 /**
  * PlayerActivity hiển thị Màn hình Chi Tiết & Trình phát video đa năng (ExoPlayer + YouTube WebView).
  * Hỗ trợ hiển thị động danh sách luồng lồng tiếng (Multi-Audio Dubs) và phụ đề rời (Subtitles CC)
@@ -411,6 +411,7 @@ public class PlayerActivity extends AppCompatActivity {
 
     /**
      * Hiển thị danh sách Luồng Lồng Tiếng (Dubbing) đăng ký bởi Admin.
+     * Tùy chọn 0 BẮT BUỘC LUÔN LÀ: "🔊 Âm thanh gốc (Original Audio)" để quay về luồng gốc!
      */
     private void showAudioTrackDialog() {
         if (isWebViewMode) {
@@ -418,45 +419,128 @@ public class PlayerActivity extends AppCompatActivity {
             return;
         }
 
-        if (!audioTracksList.isEmpty()) {
-            String[] names = new String[audioTracksList.size()];
-            for (int i = 0; i < audioTracksList.size(); i++) {
-                names[i] = audioTracksList.get(i).getName();
+        List<String> namesList = new ArrayList<>();
+        namesList.add("🔊 Âm thanh gốc (Original / Default)"); // Tùy chọn 0: Âm thanh gốc!
+
+        if (audioTracksList != null && !audioTracksList.isEmpty()) {
+            for (AudioTrackOption audio : audioTracksList) {
+                namesList.add(audio.getName());
             }
-            new AlertDialog.Builder(this)
-                    .setTitle("Chọn luồng âm thanh lồng tiếng (Multi-Audio)")
-                    .setItems(names, (dialog, which) -> {
-                        AudioTrackOption selected = audioTracksList.get(which);
+        }
+
+        String[] names = namesList.toArray(new String[0]);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Chọn luồng âm thanh lồng tiếng (Multi-Audio)")
+                .setItems(names, (dialog, which) -> {
+                    if (which == 0) {
+                        // Bấm chọn Âm thanh gốc -> Chuyển về video MP4/HLS gốc
+                        switchToOriginalAudio();
+                    } else if (audioTracksList != null && !audioTracksList.isEmpty()) {
+                        AudioTrackOption selected = audioTracksList.get(which - 1);
                         if (selected.getUrl() != null && !selected.getUrl().trim().isEmpty()) {
-                            switchVideoSource(selected.getUrl(), selected.getName());
+                            switchToAlternateAudioUrl(selected.getUrl(), selected.getName());
                         } else {
                             changeAudioTrack(selected.getName(), selected.getLanguage());
                         }
-                    })
-                    .setNegativeButton("Hủy", null)
-                    .show();
-        } else {
-            String[] audioTracks = {"Tiếng Việt (Lồng tiếng / Dub)", "English (Original)", "Tiếng Nhật (Japanese)"};
-            String[] langCodes = {"vi", "en", "ja"};
+                    }
+                })
+                .setNegativeButton("Hủy", null)
+                .show();
+    }
 
-            new AlertDialog.Builder(this)
-                    .setTitle("Chọn luồng âm thanh lồng tiếng (Multi-Audio)")
-                    .setItems(audioTracks, (dialog, which) -> changeAudioTrack(audioTracks[which], langCodes[which]))
-                    .setNegativeButton("Hủy", null)
-                    .show();
+    /**
+     * Quay trở về nguồn Video & Âm Thanh Gốc ban đầu mà không bị đen màn hình.
+     */
+    private void switchToOriginalAudio() {
+        if (player != null && videoUrl != null && !videoUrl.trim().isEmpty()) {
+            long currentPos = player.getCurrentPosition();
+            boolean isPlaying = player.isPlaying();
+
+            TrackSelectionParameters parameters = player.getTrackSelectionParameters()
+                    .buildUpon()
+                    .setPreferredAudioLanguage(null)
+                    .build();
+            player.setTrackSelectionParameters(parameters);
+
+            playDirectMediaSourceUrl(videoUrl, currentPos, isPlaying);
+            Toast.makeText(this, "Đã chuyển về Âm thanh gốc", Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void switchVideoSource(String newUrl, String label) {
-        if (player != null && newUrl != null && !newUrl.trim().isEmpty()) {
-            long currentPos = player.getCurrentPosition();
-            MediaItem newMediaItem = MediaItem.fromUri(Uri.parse(newUrl));
-            player.setMediaItem(newMediaItem);
-            player.prepare();
-            player.seekTo(currentPos);
-            player.setPlayWhenReady(true);
-            Toast.makeText(this, "Đã chuyển luồng âm thanh: " + label, Toast.LENGTH_SHORT).show();
+    /**
+     * Chuyển sang luồng lồng tiếng thay thế (Xử lý thông minh không làm đen màn hình).
+     */
+    @androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
+    private void switchToAlternateAudioUrl(String alternateUrl, String label) {
+        if (player == null || alternateUrl == null || alternateUrl.trim().isEmpty()) return;
+
+        long currentPos = player.getCurrentPosition();
+        boolean isPlaying = player.isPlaying();
+
+        // Kiểm tra xem alternateUrl là file âm thanh rời (.mp3, .m4a, .aac) hay là video lồng tiếng đầy đủ (.mp4, .m3u8)
+        boolean isAudioOnlyFile = alternateUrl.matches(".*\\.(mp3|m4a|aac|wav|ogg)(\\?.*)?$");
+
+        DefaultDataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(this);
+
+        MediaSource finalSource;
+        if (isAudioOnlyFile) {
+            // Trường hợp 1: Admin đăng ký file nhạc MP3/AAC lồng tiếng rời -> Ép GỘP Khung Hình Video Gốc + Âm Thanh MP3
+            MediaItem videoItem = new MediaItem.Builder().setUri(Uri.parse(videoUrl)).build();
+            MediaItem audioItem = new MediaItem.Builder().setUri(Uri.parse(alternateUrl)).build();
+
+            MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(videoItem);
+            MediaSource audioSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(audioItem);
+
+            finalSource = new MergingMediaSource(videoSource, audioSource);
+        } else {
+            // Trường hợp 2: Admin đăng ký một file Video MP4/HLS lồng tiếng đầy đủ -> Tải luồng video lồng tiếng
+            MediaItem videoItem = new MediaItem.Builder().setUri(Uri.parse(alternateUrl)).build();
+            finalSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(videoItem);
         }
+
+        player.setMediaSource(finalSource);
+        player.prepare();
+        player.seekTo(currentPos);
+        player.setPlayWhenReady(isPlaying);
+
+        Toast.makeText(this, "Đã chuyển luồng âm thanh: " + label, Toast.LENGTH_SHORT).show();
+    }
+
+    @androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
+    private void playDirectMediaSourceUrl(String targetUrl, long seekPos, boolean playWhenReady) {
+        if (player == null) return;
+
+        DefaultDataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(this);
+
+        // Đóng gói Subtitle configurations
+        List<MediaItem.SubtitleConfiguration> subtitleConfigs = new ArrayList<>();
+        if (!subtitleTracksList.isEmpty()) {
+            for (SubtitleOption sub : subtitleTracksList) {
+                if (sub.getSubtitleUrl() != null && !sub.getSubtitleUrl().trim().isEmpty()) {
+                    MediaItem.SubtitleConfiguration config = new MediaItem.SubtitleConfiguration.Builder(Uri.parse(sub.getSubtitleUrl()))
+                            .setMimeType(MimeTypes.TEXT_VTT)
+                            .setLanguage(sub.getLanguage())
+                            .setSelectionFlags(sub.getLanguage().equalsIgnoreCase("vi") ? C.SELECTION_FLAG_DEFAULT : 0)
+                            .build();
+                    subtitleConfigs.add(config);
+                }
+            }
+        }
+
+        MediaItem videoItem = new MediaItem.Builder()
+                .setUri(Uri.parse(targetUrl))
+                .setSubtitleConfigurations(subtitleConfigs)
+                .build();
+
+        MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(videoItem);
+
+        player.setMediaSource(videoSource);
+        player.prepare();
+        if (seekPos > 0) {
+            player.seekTo(seekPos);
+        }
+        player.setPlayWhenReady(playWhenReady);
     }
 
     private void changeAudioTrack(String trackLabel, String langCode) {
@@ -479,7 +563,7 @@ public class PlayerActivity extends AppCompatActivity {
             return;
         }
 
-        if (!subtitleTracksList.isEmpty()) {
+        if (subtitleTracksList != null && !subtitleTracksList.isEmpty()) {
             String[] names = new String[subtitleTracksList.size() + 1];
             names[0] = "Tắt phụ đề (CC Off)";
             for (int i = 0; i < subtitleTracksList.size(); i++) {
@@ -498,19 +582,11 @@ public class PlayerActivity extends AppCompatActivity {
                     .setNegativeButton("Hủy", null)
                     .show();
         } else {
-            String[] subOptions = {"Tắt phụ đề (CC Off)", "Tiếng Việt (VTT Dynamic)", "English (VTT Dynamic)"};
+            String[] subOptions = {"Tắt phụ đề (CC Off)"};
 
             new AlertDialog.Builder(this)
                     .setTitle("Chọn phụ đề rời đồng bộ (CC)")
-                    .setItems(subOptions, (dialog, which) -> {
-                        if (which == 0) {
-                            disableSubtitles();
-                        } else if (which == 1) {
-                            enableSubtitles("vi", "Tiếng Việt");
-                        } else {
-                            enableSubtitles("en", "English");
-                        }
-                    })
+                    .setItems(subOptions, (dialog, which) -> disableSubtitles())
                     .setNegativeButton("Hủy", null)
                     .show();
         }
@@ -624,7 +700,7 @@ public class PlayerActivity extends AppCompatActivity {
         }
     }
 
-    @androidx.annotation.OptIn(markerClass = UnstableApi.class)
+    @androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
     private void playDirectMediaVideo() {
         wvYouTubePlayer.setVisibility(View.GONE);
         playerView.setVisibility(View.VISIBLE);
@@ -632,6 +708,7 @@ public class PlayerActivity extends AppCompatActivity {
         if (player == null) {
             player = new ExoPlayer.Builder(this).build();
             playerView.setPlayer(player);
+
             mediaSession = new MediaSession.Builder(this, player).build();
 
             player.addListener(new Player.Listener() {
@@ -643,78 +720,14 @@ public class PlayerActivity extends AppCompatActivity {
                         layoutTopBar.bringToFront();
                     }
                 }
+
                 @Override
                 public void onIsPlayingChanged(boolean isPlaying) {
                     updatePipParams();
                 }
             });
 
-            // 1. Tạo Cỗ máy tải dữ liệu (DataSource Factory)
-            DefaultDataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(this);
-
-            // 2. Tạo Luồng Video Gốc (Bắt buộc phải có)
-            MediaItem videoItem = MediaItem.fromUri(Uri.parse(videoUrl));
-            MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(videoItem);
-
-            // Danh sách chứa các luồng cần gộp (Video + Audio)
-            List<MediaSource> mediaSourcesToMerge = new ArrayList<>();
-            mediaSourcesToMerge.add(videoSource); // Gắn luồng gốc vào đầu tiên
-
-            // 3. Xử lý nạp các Luồng Âm Thanh Lồng Tiếng (Dub) từ Admin
-            if (!audioTracksList.isEmpty()) {
-                for (AudioTrackOption audio : audioTracksList) {
-                    // Chỉ tạo Source nếu URL hợp lệ (KHÔNG trống)
-                    if (audio.getUrl() != null && !audio.getUrl().trim().isEmpty()) {
-                        MediaItem audioItemDynamic = new MediaItem.Builder()
-                                .setUri(Uri.parse(audio.getUrl()))
-                                .build();
-                        MediaSource audioSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
-                                .createMediaSource(audioItemDynamic);
-                        mediaSourcesToMerge.add(audioSource); // Gắn thêm vòi nước Audio
-                    }
-                }
-            }
-
-            // 4. Xử lý nạp các Luồng Phụ Đề (Sub CC) từ Admin
-            List<MediaItem.SubtitleConfiguration> subtitleConfigs = new ArrayList<>();
-            if (!subtitleTracksList.isEmpty()) {
-                for (SubtitleOption sub : subtitleTracksList) {
-                    if (sub.getSubtitleUrl() != null && !sub.getSubtitleUrl().trim().isEmpty()) {
-                        MediaItem.SubtitleConfiguration config = new MediaItem.SubtitleConfiguration.Builder(Uri.parse(sub.getSubtitleUrl()))
-                                .setMimeType(MimeTypes.TEXT_VTT)
-                                .setLanguage(sub.getLanguage())
-                                .setSelectionFlags(sub.getLanguage().equalsIgnoreCase("vi") ? C.SELECTION_FLAG_DEFAULT : 0)
-                                .build();
-                        subtitleConfigs.add(config);
-                    }
-                }
-            }
-            // (Không bắt buộc phải có Sub, ExoPlayer hỗ trợ nạp Sub độc lập nên ta nạp vào thẻ Video gốc thay vì Merge)
-
-            // 5. GỘP LUỒNG BẰNG MERGING_MEDIA_SOURCE
-            MediaSource finalMediaSource;
-            if (mediaSourcesToMerge.size() > 1) {
-                // Nếu có file Audio rời -> Ép 2 vòi nước chảy song song
-                MediaSource[] mediaSourcesArray = mediaSourcesToMerge.toArray(new MediaSource[0]);
-                finalMediaSource = new MergingMediaSource(mediaSourcesArray);
-            } else {
-                // Nếu không có Audio rời -> Phát luồng video gốc
-                finalMediaSource = videoSource;
-            }
-
-            // 6. Nạp toàn bộ Source và Phụ đề vào Player
-            // Do hàm MergingMediaSource không nhận Subtitle, ta phải bọc nó vào lại MediaItem
-            MediaItem finalMediaItem = new MediaItem.Builder()
-                    .setUri(Uri.parse(videoUrl))
-                    .setSubtitleConfigurations(subtitleConfigs)
-                    .build();
-
-            // Ép ExoPlayer vừa đọc luồng Merge, vừa đọc Phụ đề
-            player.setMediaSource(finalMediaSource);
-            // player.setMediaItem(finalMediaItem); -> Chú ý: KHÔNG GỌI HÀM NÀY, gọi setMediaSource là đủ, ExoPlayer sẽ tự link.
-
-            player.prepare();
-            player.setPlayWhenReady(true);
+            playDirectMediaSourceUrl(videoUrl, 0, true);
         }
     }
 
