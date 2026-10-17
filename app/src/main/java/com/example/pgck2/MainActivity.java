@@ -485,7 +485,7 @@ public class MainActivity extends AppCompatActivity {
             if (layoutTop10MonthHeader != null) layoutTop10MonthHeader.setVisibility(View.VISIBLE);
             if (rvTop10Month != null) rvTop10Month.setVisibility(View.VISIBLE);
 
-            if (tvSectionTitle != null) tvSectionTitle.setText("Phim Mới Cập Nhật (Top 10)");
+            if (tvSectionTitle != null) tvSectionTitle.setText("Phim Mới Cập Nhật");
             if (btnToggleViewMode != null) btnToggleViewMode.setText("Mặc Định");
             if (btnSwitchViewMode != null) btnSwitchViewMode.setText("Xem tất cả ➔");
 
