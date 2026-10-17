@@ -51,7 +51,6 @@ import androidx.media3.common.TrackSelectionParameters;
 import androidx.media3.common.Tracks;
 import androidx.media3.common.VideoSize;
 import androidx.media3.common.util.UnstableApi;
-import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -70,10 +69,10 @@ import java.util.Map;
 
 /**
  * PlayerActivity — Màn hình Chi Tiết & trình phát đa năng (ExoPlayer + YouTube WebView).
- * Nâng cấp giao diện điều khiển chuẩn YouTube:
- * 1. NÚT SPEED ĐỘC LẬP: Nút đổi tốc độ phát (btnExoSpeed) nằm bên ngoài Player Bar để thao tác cực nhanh.
- * 2. CÀI ĐẶT RỌN GÀNG: Nút Settings chỉ còn chứa 2 mục chính: Phụ đề CC và Ngôn ngữ Lồng Tiếng Dub.
- * 3. THANH ÂM LƯỢNG YOUTUBE: Chỉnh âm lượng phim trực tiếp trong App không che video.
+ * Khắc phục triệt để lỗi âm thanh bị rè / vỡ tiếng (Distorted Audio Fix):
+ * - Sử dụng giải mã phần cứng AudioTrack PCM 16-bit thuần túy của Android (EXTENSION_RENDERER_MODE_OFF).
+ * - Cấu hình MergingMediaSource điều chỉnh thời gian thời lượng mượt mà (adjustPeriodTimes = true).
+ * - Cấu hình LoadControl ổn định bộ đệm không bị đứt gói tin audio (buffer underrun).
  */
 public class PlayerActivity extends AppCompatActivity {
 
@@ -100,6 +99,7 @@ public class PlayerActivity extends AppCompatActivity {
     private ImageButton btnVolume;
     private SeekBar sbExoVolume;
     private ImageButton btnSettings;
+    private ImageButton btnQuality;
     private ImageButton btnSpeed;
     private ImageButton btnMaximize;
     private TextView tvPlayerVideoTitle;
@@ -242,6 +242,7 @@ public class PlayerActivity extends AppCompatActivity {
             btnVolume = playerView.findViewById(R.id.btnExoVolume);
             sbExoVolume = playerView.findViewById(R.id.sbExoVolume);
             btnSettings = playerView.findViewById(R.id.btnExoSettings);
+            btnQuality = playerView.findViewById(R.id.btnExoQuality);
             btnSpeed = playerView.findViewById(R.id.btnExoSpeed);
             btnMaximize = playerView.findViewById(R.id.btnExoFullscreen);
         }
@@ -317,6 +318,10 @@ public class PlayerActivity extends AppCompatActivity {
             btnSettings.setOnClickListener(v -> showSettingsDialog());
         }
 
+        if (btnQuality != null) {
+            btnQuality.setOnClickListener(v -> showResolutionDialog());
+        }
+
         if (btnSpeed != null) {
             btnSpeed.setOnClickListener(v -> showSpeedDialog());
         }
@@ -378,14 +383,20 @@ public class PlayerActivity extends AppCompatActivity {
     private void showSettingsDialog() {
         String[] options = {
                 "💬 Phụ Đề Rời (Subtitles CC)",
-                "🎙️ Ngôn Ngữ Lồng Tiếng (Multi-Audio Dub)"};
+                "🎙️ Ngôn Ngữ Lồng Tiếng (Multi-Audio Dub)",
+                "🎬 Chất Lượng Video (Quality HD)",
+                "⚡ Tốc Độ Phát Video (Playback Speed)"};
         new AlertDialog.Builder(this)
-                .setTitle("Cài Đặt Cấu Hình Phim")
+                .setTitle("Cài Đặt Trình Phát Video")
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) {
                         showSubtitleDialog();
-                    } else {
+                    } else if (which == 1) {
                         showAudioTrackDialog();
+                    } else if (which == 2) {
+                        showResolutionDialog();
+                    } else {
+                        showSpeedDialog();
                     }
                 })
                 .setNegativeButton("Đóng", null)
@@ -752,7 +763,7 @@ public class PlayerActivity extends AppCompatActivity {
             MediaItem audioItem = new MediaItem.Builder().setUri(Uri.parse(alternateUrl)).build();
             MediaSource audioSource = mediaSourceFactory.createMediaSource(audioItem);
 
-            finalSource = new MergingMediaSource(videoSource, audioSource);
+            finalSource = new MergingMediaSource(/* adjustPeriodTimes= */ true, /* clipToToShortestPeriod= */ false, videoSource, audioSource);
         } else {
             finalSource = buildVideoSource(mediaSourceFactory, alternateUrl);
         }
@@ -1082,14 +1093,22 @@ public class PlayerActivity extends AppCompatActivity {
         if (player == null) {
             trackSelector = new DefaultTrackSelector(this);
 
+            // Cấu hình LoadControl chuẩn ổn định bộ đệm không làm nén/méo tiếng
             DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
-                    .setBufferDurationsMs(10000, 30000, 1000, 2000)
+                    .setBufferDurationsMs(
+                            15000, // Min buffer: 15s (nhẹ RAM, không gây nghẽn mạng như mức 50s mặc định)
+                            30000, // Max buffer: 30s
+                            1500,  // Buffer để bắt đầu phát: 1.5s (bấm là chạy nhanh)
+                            3000   // Buffer sau khi mạng lag: 3.0s (đủ dày để không bị khựng liên tục)
+                    )
                     .setPrioritizeTimeOverSizeThresholds(true)
                     .build();
 
             DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
-                    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
-                    .setEnableDecoderFallback(true);
+                    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
+                    .setEnableDecoderFallback(true)
+                    .setEnableAudioFloatOutput(false) // Ép xuất chuẩn PCM 16-bit nguyên bản, chống rè trên loa điện thoại
+                    .setEnableAudioTrackPlaybackParams(false); // Để ExoPlayer tự xử lý Sonic resampling mượt hơn phần cứng
 
             AudioAttributes audioAttributes = new AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)

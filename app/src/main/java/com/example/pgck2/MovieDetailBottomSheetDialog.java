@@ -188,6 +188,15 @@ public class MovieDetailBottomSheetDialog extends BottomSheetDialogFragment {
      * Nạp đúng luồng Dub & Sub CC riêng biệt của tập đó!
      */
     private void playEpisodeOrMovie(Context context, Episode selectedEpisode) {
+        // DỪNG NGAY LẬP TỨC PREVIEW PLAYER TRƯỚC KHI MỞ MÀN HÌNH PHÁT CHÍNH
+        if (previewPlayer != null) {
+            previewPlayer.stop();
+            previewPlayer.release();
+            previewPlayer = null;
+        }
+        if (wvYouTubePreview != null) {
+            wvYouTubePreview.loadUrl("about:blank");
+        }
         if (video == null) return;
 
         String targetUrl = video.getVideoUrl();

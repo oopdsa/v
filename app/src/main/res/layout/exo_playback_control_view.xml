@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Controller custom kiểu YouTube/Netflix cho PlayerView (Media3).
      Căn giữa chuẩn 100% vĩnh viễn ở chính giữa màn hình (True Center).
-     Sử dụng 1 nút Play/Pause trung tâm duy nhất (btnExoCenterPlayPause) chống lặp touch.
-     Có nút Tốc Độ Phát Video (btnExoSpeed) độc lập bên ngoài. -->
+     Có đầy đủ nút Chất Lượng HD (btnExoQuality), Cài Đặt (btnExoSettings) và Tốc Độ (btnExoSpeed). -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -50,7 +49,7 @@
             app:tint="@android:color/white" />
     </LinearLayout>
 
-    <!-- 2. KHU VỰC ĐIỀU KHIỂN PHÍA DƯỚI (Thanh Seekbar + Âm Lượng Nhỏ Gọn Chuẩn YouTube) -->
+    <!-- 2. KHU VỰC ĐIỀU KHIỂN PHÍA DƯỚI (Thanh Seekbar + Âm Lượng Nhỏ Gọn + Nút HD + Cài Đặt + Tốc Độ) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -90,7 +89,7 @@
                 android:textSize="12sp" />
         </LinearLayout>
 
-        <!-- Hàng Nút Công Cụ Góc Dưới (Âm lượng Thanh Trượt, Cài đặt Sub/Dub, Tốc Độ Phát, Phóng to) -->
+        <!-- Hàng Nút Công Cụ Góc Dưới (Âm lượng, HD, Cài đặt Sub/Dub, Tốc Độ Phát, Phóng to) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -100,18 +99,18 @@
             <!-- Nút Loa Tắt/Mở Tiếng Mới -->
             <ImageButton
                 android:id="@+id/btnExoVolume"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Âm lượng"
-                android:padding="6dp"
+                android:padding="5dp"
                 android:src="@drawable/ic_volume"
                 app:tint="@android:color/white" />
 
             <!-- Thanh Trượt Âm Lượng Nhỏ Gọn Trực Tiếp Trong Player (YouTube Style) -->
             <SeekBar
                 android:id="@+id/sbExoVolume"
-                android:layout_width="85dp"
+                android:layout_width="75dp"
                 android:layout_height="32dp"
                 android:layout_marginStart="2dp"
                 android:max="100"
@@ -122,24 +121,36 @@
             <!-- Nút Cài đặt Sub / Dub -->
             <ImageButton
                 android:id="@+id/btnExoSettings"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginStart="8dp"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_marginStart="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Cài đặt (Sub, Dub)"
-                android:padding="6dp"
+                android:padding="5dp"
                 android:src="@drawable/btn_setting"
+                app:tint="@android:color/white" />
+
+            <!-- Nút Đổi Chất Lượng Video HD (Nút HD Độc Lập) -->
+            <ImageButton
+                android:id="@+id/btnExoQuality"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_marginStart="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Chọn chất lượng video HD"
+                android:padding="5dp"
+                android:src="@drawable/ic_quality"
                 app:tint="@android:color/white" />
 
             <!-- Nút Đổi Tốc Độ Phát Video Độc Lập -->
             <ImageButton
                 android:id="@+id/btnExoSpeed"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
                 android:layout_marginStart="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Tốc độ phát video"
-                android:padding="6dp"
+                android:padding="5dp"
                 android:src="@drawable/ic_speed"
                 app:tint="@android:color/white" />
 
@@ -150,11 +161,11 @@
 
             <ImageButton
                 android:id="@+id/btnExoFullscreen"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Toàn màn hình"
-                android:padding="6dp"
+                android:padding="5dp"
                 android:src="@drawable/ic_fullscreen"
                 app:tint="@android:color/white" />
         </LinearLayout>
