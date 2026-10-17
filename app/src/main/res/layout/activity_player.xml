@@ -5,191 +5,135 @@
     android:id="@+id/playerContainer"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000"
+    android:background="#0B0B10"
     tools:context=".PlayerActivity">
 
-    <!-- 1. KHU VỰC PHÁT VIDEO (Video Player Container) -->
+    <!-- 1. KHU VỰC PHÁT VIDEO CHUẨN YOUTUBE/NETFLIX (Chỉ hiện Controller khi User Tap vào màn hình) -->
     <FrameLayout
         android:id="@+id/framePlayerContainer"
         android:layout_width="0dp"
-        android:layout_height="230dp"
+        android:layout_height="250dp"
         android:background="@android:color/black"
+        android:elevation="4dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <!-- Trình phát video Media3 ExoPlayer PlayerView -->
+        <!-- PlayerView Media3 sử dụng Controller Custom exo_playback_control_view (YouTube/Netflix Tap-to-Show) -->
         <androidx.media3.ui.PlayerView
             android:id="@+id/playerView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:use_controller="true"
+            app:controller_layout_id="@layout/exo_playback_control_view"
+            app:keep_content_on_player_reset="true"
             app:resize_mode="fit"
-            app:show_fastforward_button="false"
-            app:show_rewind_button="false"
-            app:show_next_button="false"
-            app:show_previous_button="false" />
+            app:show_buffering="when_playing"
+            app:use_controller="true" />
 
-        <!-- WebView trình phát video YouTube IFrame -->
         <WebView
             android:id="@+id/wvYouTubePlayer"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:visibility="gone" />
 
-        <!-- Thanh Điều Khiển Phía Trên (Top Bar: Close, Title, Download, PiP) -->
+        <!-- Spinner báo đang đệm (buffering) cho ExoPlayer -->
+        <ProgressBar
+            android:id="@+id/progressBuffering"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:layout_gravity="center"
+            android:indeterminateTint="#E50914"
+            android:visibility="gone" />
+
+        <!-- TOP BAR: gradient + thông tin tiêu đề và nút thoát -->
         <RelativeLayout
             android:id="@+id/layoutTopBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="top"
-            android:background="#A0000000"
+            android:background="@drawable/bg_gradient_bottom_up"
             android:clickable="true"
             android:focusable="true"
-            android:paddingHorizontal="12dp"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp">
+            android:paddingHorizontal="8dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="18dp"
+            android:rotation="180">
 
-            <!-- Nút Thoát / Đóng Màn Hình Video -->
-            <ImageButton
-                android:id="@+id/btnExitPlayer"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_alignParentStart="true"
-                android:layout_centerVertical="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Thoát Video"
-                android:padding="6dp"
-                android:src="@drawable/ic_close"
-                app:tint="@android:color/white" />
-
-            <!-- Tiêu đề Video / Phim đang phát -->
-            <TextView
-                android:id="@+id/tvPlayerVideoTitle"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_centerVertical="true"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:layout_toEndOf="@id/btnExitPlayer"
-                android:layout_toStartOf="@id/btnDownloadVideo"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@android:color/white"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                tools:text="Tên phim đang phát..." />
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:rotation="180">
 
-            <!-- Nút Tải Video Phim về máy -->
-            <ImageButton
-                android:id="@+id/btnDownloadVideo"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_centerVertical="true"
-                android:layout_marginEnd="6dp"
-                android:layout_toStartOf="@id/btnPip"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Tải video phim"
-                android:padding="6dp"
-                android:src="@drawable/ic_download"
-                app:tint="@android:color/white" />
+                <ImageButton
+                    android:id="@+id/btnExitPlayer"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_circle_translucent"
+                    android:contentDescription="Thoát Video"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_close"
+                    app:tint="@android:color/white" />
 
-            <!-- Nút Bật Chế Độ PiP (Góc Trên Bên Phải) -->
-            <ImageButton
-                android:id="@+id/btnPip"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Thu nhỏ PiP"
-                android:padding="6dp"
-                android:src="@drawable/ic_pip"
-                app:tint="@android:color/white" />
+                <TextView
+                    android:id="@+id/tvPlayerVideoTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="10dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@android:color/white"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    tools:text="Tên phim đang phát..." />
 
+                <TextView
+                    android:id="@+id/tvQualityBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/bg_badge_quality"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:text="AUTO"
+                    android:textColor="@android:color/white"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <ImageButton
+                    android:id="@+id/btnDownloadVideo"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_circle_translucent"
+                    android:contentDescription="Tải video phim"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_download"
+                    app:tint="@android:color/white" />
+
+                <ImageButton
+                    android:id="@+id/btnPip"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:layout_marginStart="6dp"
+                    android:background="@drawable/bg_circle_translucent"
+                    android:contentDescription="Thu nhỏ PiP"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_pip"
+                    app:tint="@android:color/white" />
+
+            </LinearLayout>
         </RelativeLayout>
-
-        <!-- THANH ĐIỀU KHIỂN DƯỚI BÊN PHẢI (Gọn gàng chuẩn giao diện):
-             -10s | +10s | Cài Đặt (Sub/Dub/Speed) | HD | Phóng To -->
-        <LinearLayout
-            android:id="@+id/layoutBottomControls"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end"
-            android:layout_margin="10dp"
-            android:background="#B0000000"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="6dp"
-            android:paddingVertical="4dp">
-
-            <!-- Nút Tua Lùi 10 Giây (-10s) -->
-            <ImageButton
-                android:id="@+id/btnRewind10"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Tua lùi 10 giây"
-                android:padding="6dp"
-                android:src="@drawable/ic_rewind_10"
-                app:tint="@android:color/white" />
-
-            <!-- Nút Tua Tới 10 Giây (+10s) -->
-            <ImageButton
-                android:id="@+id/btnForward10"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Tua tới 10 giây"
-                android:padding="6dp"
-                android:src="@drawable/ic_forward_10"
-                app:tint="@android:color/white" />
-
-            <!-- Nút Cài Đặt (Tích hợp Chọn Phụ đề CC, Ngôn ngữ lồng tiếng Dub & Tốc độ phát Speed) -->
-            <ImageButton
-                android:id="@+id/btnSettings"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Cài đặt phát (Sub, Dub, Speed)"
-                android:padding="6dp"
-                android:src="@drawable/btn_setting"
-                app:tint="@android:color/white" />
-
-            <!-- Nút Nút HD / Chất lượng video -->
-            <ImageButton
-                android:id="@+id/btnQuality"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Chọn độ phân giải HD"
-                android:padding="6dp"
-                android:src="@drawable/ic_quality"
-                app:tint="@android:color/white" />
-
-            <!-- Nút Phóng To / Thu Nhỏ Màn Hình -->
-            <ImageButton
-                android:id="@+id/btnMaximize"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Phóng to màn hình"
-                android:padding="6dp"
-                android:src="@drawable/ic_fullscreen"
-                app:tint="@android:color/white" />
-
-        </LinearLayout>
 
     </FrameLayout>
 
-    <!-- 2. KHU VỰC THÔNG TIN PHIM VÀ MÔ TẢ (CUỘN ĐƯỢC) -->
+    <!-- 2. THÔNG TIN PHIM -->
     <androidx.core.widget.NestedScrollView
         android:id="@+id/scrollViewMovieDetail"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:padding="16dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -198,52 +142,67 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:padding="18dp">
 
-            <!-- Tiêu Đề Phim -->
-            <TextView
-                android:id="@+id/tvDetailTitle"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="@android:color/white"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                tools:text="Big Buck Bunny 4K" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <!-- Danh Sách Thể Loại Phim (Genres Badge) -->
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="22dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/bg_badge_quality" />
+
+                <TextView
+                    android:id="@+id/tvDetailTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@android:color/white"
+                    android:textSize="21sp"
+                    android:textStyle="bold"
+                    tools:text="Big Buck Bunny 4K" />
+            </LinearLayout>
+
             <TextView
                 android:id="@+id/tvDetailGenres"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="10dp"
+                android:background="#1A1A26"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="7dp"
                 android:textColor="#E50914"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
                 tools:text="🏷️ Thể loại: Hoạt Hình, Hài Hước, Phiêu Lưu" />
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginVertical="12dp"
-                android:background="#2E2E3C" />
+                android:layout_marginVertical="14dp"
+                android:background="#23232F" />
 
-            <!-- Tiêu đề Mô Tả Phim -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Nội Dung Mô Tả Phim"
-                android:textColor="@android:color/white"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+                android:text="NỘI DUNG PHIM"
+                android:textColor="#888899"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
 
-            <!-- Nội Dung Mô Tả Đầy Đủ -->
             <TextView
                 android:id="@+id/tvDetailDesc"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:lineSpacingExtra="4dp"
-                android:textColor="#CCCCCC"
+                android:lineSpacingExtra="5dp"
+                android:textColor="#D5D5DE"
                 android:textSize="14sp"
                 tools:text="Nội dung mô tả chi tiết của phim sẽ được hiển thị đầy đủ tại đây..." />
 

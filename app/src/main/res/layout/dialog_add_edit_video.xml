@@ -27,10 +27,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="#F8F9FA"
+            app:cardBackgroundColor="#1B1B28"
             app:cardCornerRadius="10dp"
             app:cardElevation="2dp"
-            app:strokeColor="#DDDDDD"
+            app:strokeColor="#2E2E42"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -44,7 +44,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     android:text="📝 Thông Tin Phim"
-                    android:textColor="#333333"
+                    android:textColor="#181818"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
@@ -127,7 +127,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="4dp"
                     android:text="Loại Phim / Video:"
-                    android:textColor="#555555"
+                    android:textColor="#B9B9C7"
                     android:textSize="12sp"
                     android:textStyle="bold" />
 
@@ -162,7 +162,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="⭐ Thêm vào Phim Nổi Bật (Popular Slider)"
-                    android:textColor="#333333"
+                    android:textColor="#F2F2F7"
                     android:textSize="13sp"
                     app:buttonTint="#E50914" />
 
@@ -174,10 +174,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="#F8F9FA"
+            app:cardBackgroundColor="#1B1B28"
             app:cardCornerRadius="10dp"
             app:cardElevation="2dp"
-            app:strokeColor="#DDDDDD"
+            app:strokeColor="#2E2E42"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -191,7 +191,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
-                    android:textColor="#333333"
+                    android:textColor="#2424BD"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     tools:text="🏷️ Thể loại đã chọn: Hành Động, Kinh Dị" />
@@ -233,10 +233,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="#F8F9FA"
+            app:cardBackgroundColor="#1B1B28"
             app:cardCornerRadius="10dp"
             app:cardElevation="2dp"
-            app:strokeColor="#DDDDDD"
+            app:strokeColor="#2E2E42"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -250,7 +250,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="6dp"
-                    android:textColor="#333333"
+                    android:textColor="#F2F2F7"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     tools:text="📺 Danh sách Tập: Tập 1, Tập 2, Tập 3" />
@@ -273,10 +273,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="#F8F9FA"
+            app:cardBackgroundColor="#2C2C2C"
             app:cardCornerRadius="10dp"
             app:cardElevation="2dp"
-            app:strokeColor="#DDDDDD"
+            app:strokeColor="#2E2E42"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -290,7 +290,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     android:text="🎬 Nguồn Video Gốc / Trailer (Link / Upload)"
-                    android:textColor="#333333"
+                    android:textColor="#F2F2F7"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
@@ -329,10 +329,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="#F8F9FA"
+            app:cardBackgroundColor="#1B1B28"
             app:cardCornerRadius="10dp"
             app:cardElevation="2dp"
-            app:strokeColor="#DDDDDD"
+            app:strokeColor="#2E2E42"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -346,7 +346,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="6dp"
-                    android:textColor="#333333"
+                    android:textColor="#F2F2F7"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     tools:text="🎙️ Luồng lồng tiếng (Dub): Tiếng Việt, English, Japanese" />
@@ -369,10 +369,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="#F8F9FA"
+            app:cardBackgroundColor="#1B1B28"
             app:cardCornerRadius="10dp"
             app:cardElevation="2dp"
-            app:strokeColor="#DDDDDD"
+            app:strokeColor="#2E2E42"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -386,7 +386,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="6dp"
-                    android:textColor="#333333"
+                    android:textColor="#F2F2F7"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     tools:text="💬 Phụ đề rời CC: Tiếng Việt (.vtt), English (.vtt)" />
@@ -409,10 +409,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardBackgroundColor="#F8F9FA"
+            app:cardBackgroundColor="#1B1B28"
             app:cardCornerRadius="10dp"
             app:cardElevation="2dp"
-            app:strokeColor="#DDDDDD"
+            app:strokeColor="#2E2E42"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -426,7 +426,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     android:text="🖼️ Ảnh Bìa / Poster Phim (PNG / JPG)"
-                    android:textColor="#333333"
+                    android:textColor="#F2F2F7"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 

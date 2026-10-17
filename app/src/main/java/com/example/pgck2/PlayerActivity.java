@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
@@ -17,45 +18,62 @@ import android.os.Environment;
 import android.util.Rational;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.CheckBox;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.OptIn;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.NestedScrollView;
+import androidx.media3.common.AudioAttributes;
 import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.PlaybackParameters;
 import androidx.media3.common.Player;
+import androidx.media3.common.TrackSelectionOverride;
 import androidx.media3.common.TrackSelectionParameters;
+import androidx.media3.common.Tracks;
+import androidx.media3.common.VideoSize;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.DefaultDataSource;
+import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.MergingMediaSource;
-import androidx.media3.exoplayer.source.ProgressiveMediaSource;
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector;
 import androidx.media3.session.MediaSession;
 import androidx.media3.ui.PlayerView;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * PlayerActivity hiển thị Màn hình Chi Tiết & Trình phát video đa năng (ExoPlayer + YouTube WebView).
- * Hỗ trợ hiển thị động danh sách luồng lồng tiếng (Multi-Audio Dubs) và phụ đề rời (Subtitles CC)
- * do Admin khởi tạo trực tiếp cho từng bộ phim.
+ * PlayerActivity — Màn hình Chi Tiết & trình phát đa năng (ExoPlayer + YouTube WebView).
+ * Nâng cấp giao diện điều khiển chuẩn YouTube:
+ * 1. NÚT SPEED ĐỘC LẬP: Nút đổi tốc độ phát (btnExoSpeed) nằm bên ngoài Player Bar để thao tác cực nhanh.
+ * 2. CÀI ĐẶT RỌN GÀNG: Nút Settings chỉ còn chứa 2 mục chính: Phụ đề CC và Ngôn ngữ Lồng Tiếng Dub.
+ * 3. THANH ÂM LƯỢNG YOUTUBE: Chỉnh âm lượng phim trực tiếp trong App không che video.
  */
 public class PlayerActivity extends AppCompatActivity {
 
@@ -68,31 +86,48 @@ public class PlayerActivity extends AppCompatActivity {
     private PlayerView playerView;
     private WebView wvYouTubePlayer;
     private RelativeLayout layoutTopBar;
-    private View layoutBottomControls;
     private NestedScrollView scrollViewMovieDetail;
     private TextView tvDetailTitle;
     private TextView tvDetailGenres;
     private TextView tvDetailDesc;
+    private ProgressBar progressBuffering;
+    private TextView tvQualityBadge;
 
     private ImageButton btnExitPlayer;
     private ImageButton btnDownloadVideo;
     private ImageButton btnPip;
-    private ImageButton btnRewind10;
-    private ImageButton btnForward10;
+    private ImageButton btnCenterPlayPause;
+    private ImageButton btnVolume;
+    private SeekBar sbExoVolume;
     private ImageButton btnSettings;
-    private ImageButton btnQuality;
+    private ImageButton btnSpeed;
     private ImageButton btnMaximize;
     private TextView tvPlayerVideoTitle;
 
     // Các biến trạng thái logic
     private ExoPlayer player;
+    private DefaultTrackSelector trackSelector;
     private MediaSession mediaSession;
     private String videoUrl;
+    private String currentMediaUrl;
+    private String activeAlternateAudioUrl;
+    private String activeAlternateLabel;
     private String videoTitle;
     private String videoDesc;
     private String videoGenres;
     private boolean isWebViewMode = false;
     private boolean isFullscreen = false;
+    private float lastNonZeroVolume = 1.0f;
+
+    // Ghi nhớ vị trí phát để dựng lại player sau onStop
+    private long resumePosition = 0;
+    private boolean resumePlayWhenReady = true;
+
+    // Chất lượng đang chọn: 0 = Auto, còn lại = chiều cao mục tiêu (360/480/720/1080)
+    private int qualityHeight = 0;
+    // Phụ đề: có bật hay không + ngôn ngữ ưu tiên
+    private boolean subtitlesEnabled = true;
+    private String preferredSubtitleLang = "vi";
 
     // Danh sách luồng âm thanh & phụ đề rời nhận từ Admin
     private final List<AudioTrackOption> audioTracksList = new ArrayList<>();
@@ -112,6 +147,7 @@ public class PlayerActivity extends AppCompatActivity {
                     player.play();
                 }
                 updatePipParams();
+                updatePlayPauseIcon();
             }
         }
     };
@@ -151,7 +187,8 @@ public class PlayerActivity extends AppCompatActivity {
                 ArrayList<String> audioUrls = intent.getStringArrayListExtra("extra_audio_urls");
 
                 if (audioNames != null && audioLangs != null && audioUrls != null) {
-                    for (int i = 0; i < audioNames.size(); i++) {
+                    int n = Math.min(audioNames.size(), Math.min(audioLangs.size(), audioUrls.size()));
+                    for (int i = 0; i < n; i++) {
                         audioTracksList.add(new AudioTrackOption(audioNames.get(i), audioLangs.get(i), audioUrls.get(i)));
                     }
                 }
@@ -164,12 +201,14 @@ public class PlayerActivity extends AppCompatActivity {
                 ArrayList<String> subUrls = intent.getStringArrayListExtra("extra_sub_urls");
 
                 if (subNames != null && subLangs != null && subUrls != null) {
-                    for (int i = 0; i < subNames.size(); i++) {
+                    int n = Math.min(subNames.size(), Math.min(subLangs.size(), subUrls.size()));
+                    for (int i = 0; i < subNames.size() && i < n; i++) {
                         subtitleTracksList.add(new SubtitleOption(subNames.get(i), subLangs.get(i), subUrls.get(i)));
                     }
                 }
             }
         }
+        currentMediaUrl = videoUrl;
 
         setupControlListeners();
         setupPlayer();
@@ -183,24 +222,32 @@ public class PlayerActivity extends AppCompatActivity {
         playerView = findViewById(R.id.playerView);
         wvYouTubePlayer = findViewById(R.id.wvYouTubePlayer);
         layoutTopBar = findViewById(R.id.layoutTopBar);
-        layoutBottomControls = findViewById(R.id.layoutBottomControls);
         scrollViewMovieDetail = findViewById(R.id.scrollViewMovieDetail);
         tvDetailTitle = findViewById(R.id.tvDetailTitle);
         tvDetailGenres = findViewById(R.id.tvDetailGenres);
         tvDetailDesc = findViewById(R.id.tvDetailDesc);
+        progressBuffering = findViewById(R.id.progressBuffering);
+        tvQualityBadge = findViewById(R.id.tvQualityBadge);
 
         btnExitPlayer = findViewById(R.id.btnExitPlayer);
         btnDownloadVideo = findViewById(R.id.btnDownloadVideo);
         btnPip = findViewById(R.id.btnPip);
-        btnRewind10 = findViewById(R.id.btnRewind10);
-        btnForward10 = findViewById(R.id.btnForward10);
-        btnSettings = findViewById(R.id.btnSettings);
-        btnQuality = findViewById(R.id.btnQuality);
-        btnMaximize = findViewById(R.id.btnMaximize);
         tvPlayerVideoTitle = findViewById(R.id.tvPlayerVideoTitle);
 
+        if (playerView != null) {
+            playerView.setControllerShowTimeoutMs(3000);
+            playerView.setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING);
+
+            btnCenterPlayPause = playerView.findViewById(R.id.btnExoCenterPlayPause);
+            btnVolume = playerView.findViewById(R.id.btnExoVolume);
+            sbExoVolume = playerView.findViewById(R.id.sbExoVolume);
+            btnSettings = playerView.findViewById(R.id.btnExoSettings);
+            btnSpeed = playerView.findViewById(R.id.btnExoSpeed);
+            btnMaximize = playerView.findViewById(R.id.btnExoFullscreen);
+        }
+
         if (layoutTopBar != null) layoutTopBar.bringToFront();
-        if (layoutBottomControls != null) layoutBottomControls.bringToFront();
+        updateVolumeIcon();
     }
 
     private void setupControlListeners() {
@@ -210,20 +257,68 @@ public class PlayerActivity extends AppCompatActivity {
             btnDownloadVideo.setOnClickListener(v -> downloadVideo());
         }
 
-        if (btnRewind10 != null) {
-            btnRewind10.setOnClickListener(v -> seekVideoRelative(-10));
+        // Nút Play / Pause Trung Tâm Duy Nhất
+        if (btnCenterPlayPause != null) {
+            btnCenterPlayPause.setOnClickListener(v -> {
+                if (player == null) return;
+                if (player.isPlaying()) {
+                    player.pause();
+                } else {
+                    player.play();
+                }
+                updatePlayPauseIcon();
+            });
         }
 
-        if (btnForward10 != null) {
-            btnForward10.setOnClickListener(v -> seekVideoRelative(10));
+        // Thanh trượt âm lượng trực tiếp trên thanh điều khiển Player (YouTube Style)
+        if (sbExoVolume != null) {
+            sbExoVolume.setMax(100);
+            float curVol = (player != null) ? player.getVolume() * 100f : 100f;
+            sbExoVolume.setProgress(Math.round(curVol));
+
+            sbExoVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    if (fromUser && player != null) {
+                        float v = progress / 100f;
+                        player.setVolume(v);
+                        if (v > 0f) {
+                            lastNonZeroVolume = v;
+                        }
+                        updateVolumeIcon();
+                    }
+                }
+
+                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            });
+        }
+
+        // Nút bấm Mute / Unmute âm lượng nhanh trên Player Bar
+        if (btnVolume != null) {
+            btnVolume.setOnClickListener(v -> {
+                if (player == null) return;
+                if (player.getVolume() > 0f) {
+                    lastNonZeroVolume = player.getVolume();
+                    player.setVolume(0f);
+                    if (sbExoVolume != null) sbExoVolume.setProgress(0);
+                    Toast.makeText(this, "Tắt tiếng phim (Mute)", Toast.LENGTH_SHORT).show();
+                } else {
+                    float restoreVol = lastNonZeroVolume > 0f ? lastNonZeroVolume : 1.0f;
+                    player.setVolume(restoreVol);
+                    if (sbExoVolume != null) sbExoVolume.setProgress(Math.round(restoreVol * 100f));
+                    Toast.makeText(this, "Bật tiếng phim", Toast.LENGTH_SHORT).show();
+                }
+                updateVolumeIcon();
+            });
         }
 
         if (btnSettings != null) {
             btnSettings.setOnClickListener(v -> showSettingsDialog());
         }
 
-        if (btnQuality != null) {
-            btnQuality.setOnClickListener(v -> showResolutionDialog());
+        if (btnSpeed != null) {
+            btnSpeed.setOnClickListener(v -> showSpeedDialog());
         }
 
         if (btnMaximize != null) {
@@ -234,19 +329,24 @@ public class PlayerActivity extends AppCompatActivity {
             btnPip.setOnClickListener(v -> enterPipMode());
         }
 
-        playerView.setControllerVisibilityListener((PlayerView.ControllerVisibilityListener) visibility -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode()) {
-                return;
-            }
-            if (layoutTopBar != null) {
-                layoutTopBar.setVisibility(visibility);
-                if (visibility == View.VISIBLE) layoutTopBar.bringToFront();
-            }
-            if (layoutBottomControls != null) {
-                layoutBottomControls.setVisibility(visibility);
-                if (visibility == View.VISIBLE) layoutBottomControls.bringToFront();
-            }
-        });
+        if (playerView != null) {
+            playerView.setControllerVisibilityListener((PlayerView.ControllerVisibilityListener) visibility -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode()) {
+                    return;
+                }
+                if (layoutTopBar != null) {
+                    layoutTopBar.setVisibility(visibility);
+                    if (visibility == View.VISIBLE) layoutTopBar.bringToFront();
+                }
+            });
+        }
+    }
+
+    /** Cập nhật Icon Play / Pause trung tâm khớp với trạng thái thực tế của ExoPlayer. */
+    private void updatePlayPauseIcon() {
+        if (btnCenterPlayPause == null) return;
+        boolean isPlaying = (player != null && player.isPlaying());
+        btnCenterPlayPause.setImageResource(isPlaying ? R.drawable.ic_pause : R.drawable.ic_play);
     }
 
     private void toggleFullscreenMode() {
@@ -257,34 +357,45 @@ public class PlayerActivity extends AppCompatActivity {
             params.height = ViewGroup.LayoutParams.MATCH_PARENT;
             framePlayerContainer.setLayoutParams(params);
             scrollViewMovieDetail.setVisibility(View.GONE);
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+            if (getSupportActionBar() != null) getSupportActionBar().hide();
             Toast.makeText(this, "Toàn Màn Hình", Toast.LENGTH_SHORT).show();
         } else {
-            int defaultHeightPx = (int) (230 * getResources().getDisplayMetrics().density);
+            int defaultHeightPx = (int) (250 * getResources().getDisplayMetrics().density);
             params.height = defaultHeightPx;
             framePlayerContainer.setLayoutParams(params);
             scrollViewMovieDetail.setVisibility(View.VISIBLE);
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+            if (getSupportActionBar() != null) getSupportActionBar().show();
             Toast.makeText(this, "Khung Chi Tiết", Toast.LENGTH_SHORT).show();
         }
 
         if (layoutTopBar != null) layoutTopBar.bringToFront();
-        if (layoutBottomControls != null) layoutBottomControls.bringToFront();
     }
 
     private void showSettingsDialog() {
-        String[] options = {"💬 Phụ Đề Rời (Subtitles CC)", "🎙️ Ngôn Ngữ Lồng Tiếng (Multi-Audio Dub)", "⚡ Tốc Độ Phát Video (Playback Speed)"};
+        String[] options = {
+                "💬 Phụ Đề Rời (Subtitles CC)",
+                "🎙️ Ngôn Ngữ Lồng Tiếng (Multi-Audio Dub)"};
         new AlertDialog.Builder(this)
-                .setTitle("Cài Đặt Trình Phát Video")
+                .setTitle("Cài Đặt Cấu Hình Phim")
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) {
                         showSubtitleDialog();
-                    } else if (which == 1) {
-                        showAudioTrackDialog();
                     } else {
-                        showSpeedDialog();
+                        showAudioTrackDialog();
                     }
                 })
                 .setNegativeButton("Đóng", null)
                 .show();
+    }
+
+    private void updateVolumeIcon() {
+        if (btnVolume == null) return;
+        boolean muted = (player != null && player.getVolume() == 0f);
+        btnVolume.setAlpha(muted ? 0.4f : 1.0f);
     }
 
     private void downloadVideo() {
@@ -299,7 +410,7 @@ public class PlayerActivity extends AppCompatActivity {
         }
 
         try {
-            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(videoUrl));
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(currentMediaUrl != null ? currentMediaUrl : videoUrl));
             String fileName = (videoTitle != null && !videoTitle.trim().isEmpty() ? videoTitle : "phim_" + System.currentTimeMillis()) + ".mp4";
             fileName = fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
 
@@ -324,6 +435,9 @@ public class PlayerActivity extends AppCompatActivity {
         if (videoUrl == null || videoUrl.isEmpty()) {
             videoUrl = "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8";
         }
+        if (currentMediaUrl == null || currentMediaUrl.isEmpty()) {
+            currentMediaUrl = videoUrl;
+        }
 
         Video tempVideo = new Video();
         tempVideo.setVideoUrl(videoUrl);
@@ -331,7 +445,7 @@ public class PlayerActivity extends AppCompatActivity {
         if (tempVideo.isYouTubeVideo()) {
             isWebViewMode = true;
             playYouTubeVideo(tempVideo.getYouTubeVideoId());
-        } else if (videoUrl.matches(".*\\.(mp4|m3u8|webm|mkv)(\\?.*)?$")) {
+        } else if (videoUrl.matches(".*\\.(mp4|m3u8|mpd|webm|mkv)(\\?.*)?$")) {
             isWebViewMode = false;
             playDirectMediaVideo();
         } else {
@@ -340,200 +454,382 @@ public class PlayerActivity extends AppCompatActivity {
         }
     }
 
-    private void seekVideoRelative(int secondsDelta) {
+    private void showResolutionDialog() {
         if (isWebViewMode) {
-            wvYouTubePlayer.evaluateJavascript("seekRelative(" + secondsDelta + ");", null);
-        } else {
-            if (player != null) {
-                long currentPos = player.getCurrentPosition();
-                long targetPos = currentPos + (secondsDelta * 1000L);
-                if (targetPos < 0) targetPos = 0;
-                long duration = player.getDuration();
-                if (duration > 0 && targetPos > duration) targetPos = duration;
+            showResolutionDialogWeb();
+            return;
+        }
+        if (player == null) {
+            Toast.makeText(this, "Trình phát chưa sẵn sàng, thử lại sau giây lát!", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-                player.seekTo(targetPos);
+        Map<Integer, Long> heightToBitrate = new LinkedHashMap<>();
+        for (Tracks.Group group : player.getCurrentTracks().getGroups()) {
+            if (group.getType() != C.TRACK_TYPE_VIDEO) continue;
+            for (int i = 0; i < group.length; i++) {
+                int h = group.getTrackFormat(i).height;
+                int bitrate = group.getTrackFormat(i).bitrate;
+                if (h > 0) {
+                    Long old = heightToBitrate.get(h);
+                    if (old == null || (bitrate > 0 && bitrate > old)) {
+                        heightToBitrate.put(h, (long) Math.max(bitrate, 0));
+                    }
+                }
             }
         }
-        String message = secondsDelta > 0 ? "Tua tới " + secondsDelta + "s" : "Tua lùi " + Math.abs(secondsDelta) + "s";
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-    }
 
-    private void showResolutionDialog() {
-        String[] qualities = {"Tự động (Auto Adaptive ABR)", "1080p (Full HD)", "720p (HD 4G Tối ưu)", "480p (SD)", "360p (Thấp)"};
+        List<Integer> heights = new ArrayList<>(heightToBitrate.keySet());
+        Collections.sort(heights);
+
+        if (heights.size() <= 1) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Chất lượng video")
+                    .setMessage("Video này chỉ có 1 luồng phân giải"
+                            + (heights.size() == 1 ? " (" + heights.get(0) + "p)" : "")
+                            + " (file MP4 trực tiếp), nên không có mức khác để chuyển.\n\n"
+                            + "Muốn đổi 360/480/720/1080 được thì nguồn phải là HLS (.m3u8) "
+                            + "hoặc DASH (.mpd) đa variant — hãy thêm link dạng đó trong Admin.")
+                    .setPositiveButton("Đã hiểu", null)
+                    .show();
+            return;
+        }
+
+        List<String> labels = new ArrayList<>();
+        labels.add(qualityHeight == 0 ? "✓ Tự động (Auto Adaptive)" : "Tự động (Auto Adaptive)");
+        List<Integer> values = new ArrayList<>();
+        values.add(0);
+
+        for (int i = heights.size() - 1; i >= 0; i--) {
+            int h = heights.get(i);
+            long br = heightToBitrate.get(h);
+            String bitrateStr = br > 0 ? " • " + String.format("%.1f Mbps", br / 1000000f) : "";
+            labels.add((qualityHeight == h ? "✓ " : "") + h + "p" + bitrateStr);
+            values.add(h);
+        }
+
+        String[] arr = labels.toArray(new String[0]);
         new AlertDialog.Builder(this)
-                .setTitle("Chọn độ phân giải HD (Adaptive Bitrate)")
-                .setItems(qualities, (dialog, which) -> changeVideoResolution(which, qualities[which]))
+                .setTitle("Chọn độ phân giải (" + heights.size() + " mức có thật)")
+                .setItems(arr, (dialog, which) -> changeVideoResolutionByHeight(values.get(which), labels.get(which)))
                 .setNegativeButton("Hủy", null)
                 .show();
     }
 
-    private void changeVideoResolution(int optionIndex, String optionLabel) {
-        if (isWebViewMode) {
-            String ytQuality = "auto";
-            switch (optionIndex) {
-                case 1: ytQuality = "hd1080"; break;
-                case 2: ytQuality = "hd720"; break;
-                case 3: ytQuality = "large"; break;
-                case 4: ytQuality = "medium"; break;
-            }
-            wvYouTubePlayer.evaluateJavascript("setPlaybackQuality('" + ytQuality + "');", null);
-            Toast.makeText(this, "WebView: Đã gửi lệnh chuyển phân giải", Toast.LENGTH_SHORT).show();
-        } else {
-            if (player != null) {
-                TrackSelectionParameters.Builder builder = player.getTrackSelectionParameters().buildUpon();
-                switch (optionIndex) {
-                    case 0:
-                        builder.clearVideoSizeConstraints();
-                        builder.setMaxVideoBitrate(Integer.MAX_VALUE);
-                        break;
-                    case 1:
-                        builder.setMaxVideoSize(1920, 1080);
-                        builder.setMaxVideoBitrate(5000000);
-                        break;
-                    case 2:
-                        builder.setMaxVideoSize(1280, 720);
-                        builder.setMaxVideoBitrate(2500000);
-                        break;
-                    case 3:
-                        builder.setMaxVideoSize(854, 480);
-                        builder.setMaxVideoBitrate(1000000);
-                        break;
-                    case 4:
-                        builder.setMaxVideoSize(640, 360);
-                        builder.setMaxVideoBitrate(500000);
-                        break;
-                }
-                player.setTrackSelectionParameters(builder.build());
-            }
-            Toast.makeText(this, "Đã chuyển độ phân giải: " + optionLabel, Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    /**
-     * Hiển thị danh sách Luồng Lồng Tiếng (Dubbing) đăng ký bởi Admin.
-     * Tùy chọn 0 BẮT BUỘC LUÔN LÀ: "🔊 Âm thanh gốc (Original Audio)" để quay về luồng gốc!
-     */
-    private void showAudioTrackDialog() {
-        if (isWebViewMode) {
-            Toast.makeText(this, "Trang web không hỗ trợ chuyển luồng âm thanh rời!", Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        List<String> namesList = new ArrayList<>();
-        namesList.add("🔊 Âm thanh gốc (Original / Default)"); // Tùy chọn 0: Âm thanh gốc!
-
-        if (audioTracksList != null && !audioTracksList.isEmpty()) {
-            for (AudioTrackOption audio : audioTracksList) {
-                namesList.add(audio.getName());
-            }
-        }
-
-        String[] names = namesList.toArray(new String[0]);
-
+    private void showResolutionDialogWeb() {
+        String[] qualities = {"Tự động", "1080p", "720p", "480p", "360p"};
+        String[] ytValues = {"auto", "hd1080", "hd720", "large", "medium"};
         new AlertDialog.Builder(this)
-                .setTitle("Chọn luồng âm thanh lồng tiếng (Multi-Audio)")
-                .setItems(names, (dialog, which) -> {
-                    if (which == 0) {
-                        // Bấm chọn Âm thanh gốc -> Chuyển về video MP4/HLS gốc
-                        switchToOriginalAudio();
-                    } else if (audioTracksList != null && !audioTracksList.isEmpty()) {
-                        AudioTrackOption selected = audioTracksList.get(which - 1);
-                        if (selected.getUrl() != null && !selected.getUrl().trim().isEmpty()) {
-                            switchToAlternateAudioUrl(selected.getUrl(), selected.getName());
-                        } else {
-                            changeAudioTrack(selected.getName(), selected.getLanguage());
-                        }
-                    }
+                .setTitle("Chọn độ phân giải (Web)")
+                .setMessage("Lưu ý: Trình phát của trang web sẽ quyết định chất lượng thực tế.")
+                .setItems(qualities, (dialog, which) -> {
+                    wvYouTubePlayer.evaluateJavascript("setPlaybackQuality('" + ytValues[which] + "');", null);
+                    Toast.makeText(this, "Đã gửi lệnh chuyển: " + qualities[which], Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Hủy", null)
                 .show();
     }
 
-    /**
-     * Quay trở về nguồn Video & Âm Thanh Gốc ban đầu mà không bị đen màn hình.
-     */
+    private void changeVideoResolutionByHeight(int height, String label) {
+        if (player == null) return;
+        qualityHeight = height;
+
+        TrackSelectionParameters.Builder builder = player.getTrackSelectionParameters().buildUpon();
+        reapplyQualitySelection(builder);
+        player.setTrackSelectionParameters(builder.build());
+        updateQualityBadge();
+        Toast.makeText(this, "Đã chuyển độ phân giải: " + label.replace("✓ ", ""), Toast.LENGTH_SHORT).show();
+    }
+
+    private void applyHeightConstraints(TrackSelectionParameters.Builder builder, int height) {
+        switch (height) {
+            case 1080:
+                builder.setMaxVideoSize(1920, 1080);
+                builder.setMaxVideoBitrate(6000000);
+                break;
+            case 720:
+                builder.setMaxVideoSize(1280, 720);
+                builder.setMaxVideoBitrate(3000000);
+                break;
+            case 480:
+                builder.setMaxVideoSize(854, 480);
+                builder.setMaxVideoBitrate(1200000);
+                break;
+            case 360:
+                builder.setMaxVideoSize(640, 360);
+                builder.setMaxVideoBitrate(700000);
+                break;
+            default:
+                builder.setMaxVideoSize(1920, height);
+                builder.setMaxVideoBitrate(Integer.MAX_VALUE);
+                break;
+        }
+    }
+
+    private TrackSelectionOverride findBestVideoOverride(int height) {
+        Tracks.Group bestGroup = null;
+        int bestIndex = -1;
+        int bestHeight = -1;
+        for (Tracks.Group group : player.getCurrentTracks().getGroups()) {
+            if (group.getType() != C.TRACK_TYPE_VIDEO) continue;
+            for (int i = 0; i < group.length; i++) {
+                int h = group.getTrackFormat(i).height;
+                if (h > 0 && h <= height && h > bestHeight) {
+                    bestHeight = h;
+                    bestGroup = group;
+                    bestIndex = i;
+                }
+            }
+        }
+        if (bestGroup == null) {
+            for (Tracks.Group group : player.getCurrentTracks().getGroups()) {
+                if (group.getType() != C.TRACK_TYPE_VIDEO) continue;
+                for (int i = 0; i < group.length; i++) {
+                    int h = group.getTrackFormat(i).height;
+                    if (h > 0 && (bestHeight == -1 || h < bestHeight)) {
+                        bestHeight = h;
+                        bestGroup = group;
+                        bestIndex = i;
+                    }
+                }
+            }
+        }
+        if (bestGroup != null && bestIndex >= 0) {
+            return new TrackSelectionOverride(bestGroup.getMediaTrackGroup(), bestIndex);
+        }
+        return null;
+    }
+
+    private void reapplyQualitySelection(TrackSelectionParameters.Builder builder) {
+        if (qualityHeight == 0) {
+            builder.clearVideoSizeConstraints();
+            builder.setMaxVideoBitrate(Integer.MAX_VALUE);
+            builder.clearOverridesOfType(C.TRACK_TYPE_VIDEO);
+        } else {
+            applyHeightConstraints(builder, qualityHeight);
+            TrackSelectionOverride override = findBestVideoOverride(qualityHeight);
+            builder.clearOverridesOfType(C.TRACK_TYPE_VIDEO);
+            if (override != null) {
+                builder.setOverrideForType(override);
+            }
+        }
+    }
+
+    private void updateQualityBadge() {
+        if (tvQualityBadge == null) return;
+        if (isWebViewMode) {
+            tvQualityBadge.setVisibility(View.GONE);
+            return;
+        }
+        tvQualityBadge.setVisibility(View.VISIBLE);
+        if (player != null && player.getVideoSize().height > 0 && qualityHeight == 0) {
+            int h = player.getVideoSize().height;
+            tvQualityBadge.setText(h + "p • AUTO");
+        } else if (qualityHeight == 0) {
+            tvQualityBadge.setText("AUTO");
+        } else {
+            tvQualityBadge.setText(qualityHeight + "p");
+        }
+    }
+
+    private void showAudioTrackDialog() {
+        if (isWebViewMode) {
+            Toast.makeText(this, "Trang web không hỗ trợ chuyển luồng âm thanh rời!", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (player == null) {
+            Toast.makeText(this, "Trình phát chưa sẵn sàng!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        List<String> labels = new ArrayList<>();
+        final List<Runnable> actions = new ArrayList<>();
+
+        labels.add("🔊 Âm thanh gốc (Original Video)");
+        actions.add(this::switchToOriginalAudio);
+
+        int embeddedCount = 0;
+        List<Tracks.Group> audioGroups = new ArrayList<>();
+        for (Tracks.Group group : player.getCurrentTracks().getGroups()) {
+            if (group.getType() == C.TRACK_TYPE_AUDIO) {
+                audioGroups.add(group);
+                embeddedCount += group.length;
+            }
+        }
+
+        if (embeddedCount > 1) {
+            int trackIdx = 1;
+            for (Tracks.Group group : audioGroups) {
+                for (int i = 0; i < group.length; i++) {
+                    String lang = group.getTrackFormat(i).language;
+                    String trackLabel = group.getTrackFormat(i).label;
+                    String shown = trackLabel != null && !trackLabel.isEmpty() ? trackLabel
+                            : (lang != null && !lang.isEmpty() ? lang : "Track #" + trackIdx);
+                    final Tracks.Group g = group;
+                    final int idx = i;
+                    final String name = shown;
+                    labels.add("🎧 " + shown + " (Track nhúng #" + trackIdx + ")");
+                    actions.add(() -> selectEmbeddedAudio(g, idx, name));
+                    trackIdx++;
+                }
+            }
+        }
+
+        if (audioTracksList != null && !audioTracksList.isEmpty()) {
+            for (AudioTrackOption audio : audioTracksList) {
+                final AudioTrackOption a = audio;
+                labels.add("🎙️ " + a.getName());
+                actions.add(() -> {
+                    if (a.getUrl() != null && !a.getUrl().trim().isEmpty()) {
+                        switchToAlternateAudioUrl(a.getUrl(), a.getName());
+                    } else if (a.getLanguage() != null && !a.getLanguage().isEmpty()) {
+                        changeAudioTrack(a.getName(), a.getLanguage());
+                    } else {
+                        Toast.makeText(this, "Luồng này chưa có URL!", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        }
+
+        String[] names = labels.toArray(new String[0]);
+        new AlertDialog.Builder(this)
+                .setTitle("Chọn luồng âm thanh (Multi-Audio Dub)")
+                .setItems(names, (dialog, which) -> actions.get(which).run())
+                .setNegativeButton("Hủy", null)
+                .show();
+    }
+
+    @OptIn(markerClass = UnstableApi.class)
+    private void selectEmbeddedAudio(Tracks.Group group, int trackIndex, String label) {
+        if (player == null) return;
+        TrackSelectionParameters params = player.getTrackSelectionParameters()
+                .buildUpon()
+                .setPreferredAudioLanguage(null)
+                .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+                .setOverrideForType(new TrackSelectionOverride(group.getMediaTrackGroup(), trackIndex))
+                .build();
+        player.setTrackSelectionParameters(params);
+        Toast.makeText(this, "Đã chuyển âm thanh: " + label, Toast.LENGTH_SHORT).show();
+    }
+
     private void switchToOriginalAudio() {
         if (player != null && videoUrl != null && !videoUrl.trim().isEmpty()) {
-            long currentPos = player.getCurrentPosition();
-            boolean isPlaying = player.isPlaying();
+            activeAlternateAudioUrl = null;
+            activeAlternateLabel = null;
+            currentMediaUrl = videoUrl;
 
             TrackSelectionParameters parameters = player.getTrackSelectionParameters()
                     .buildUpon()
                     .setPreferredAudioLanguage(null)
+                    .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
                     .build();
             player.setTrackSelectionParameters(parameters);
 
-            playDirectMediaSourceUrl(videoUrl, currentPos, isPlaying);
+            long currentPos = player.getCurrentPosition();
+            playDirectMediaSourceUrl(videoUrl, currentPos, true);
             Toast.makeText(this, "Đã chuyển về Âm thanh gốc", Toast.LENGTH_SHORT).show();
         }
     }
 
-    /**
-     * Chuyển sang luồng lồng tiếng thay thế (Xử lý thông minh không làm đen màn hình).
-     */
-    @androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
+    @OptIn(markerClass = UnstableApi.class)
     private void switchToAlternateAudioUrl(String alternateUrl, String label) {
         if (player == null || alternateUrl == null || alternateUrl.trim().isEmpty()) return;
 
         long currentPos = player.getCurrentPosition();
-        boolean isPlaying = player.isPlaying();
 
-        // Kiểm tra xem alternateUrl là file âm thanh rời (.mp3, .m4a, .aac) hay là video lồng tiếng đầy đủ (.mp4, .m3u8)
         boolean isAudioOnlyFile = alternateUrl.matches(".*\\.(mp3|m4a|aac|wav|ogg)(\\?.*)?$");
+        activeAlternateAudioUrl = alternateUrl;
+        activeAlternateLabel = label;
+        if (!isAudioOnlyFile) {
+            currentMediaUrl = alternateUrl;
+        }
 
-        DefaultDataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(this);
+        DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this);
 
         MediaSource finalSource;
         if (isAudioOnlyFile) {
-            // Trường hợp 1: Admin đăng ký file nhạc MP3/AAC lồng tiếng rời -> Ép GỘP Khung Hình Video Gốc + Âm Thanh MP3
-            MediaItem videoItem = new MediaItem.Builder().setUri(Uri.parse(videoUrl)).build();
+            MediaSource videoSource = buildVideoSource(mediaSourceFactory, videoUrl);
             MediaItem audioItem = new MediaItem.Builder().setUri(Uri.parse(alternateUrl)).build();
-
-            MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(videoItem);
-            MediaSource audioSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(audioItem);
+            MediaSource audioSource = mediaSourceFactory.createMediaSource(audioItem);
 
             finalSource = new MergingMediaSource(videoSource, audioSource);
         } else {
-            // Trường hợp 2: Admin đăng ký một file Video MP4/HLS lồng tiếng đầy đủ -> Tải luồng video lồng tiếng
-            MediaItem videoItem = new MediaItem.Builder().setUri(Uri.parse(alternateUrl)).build();
-            finalSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(videoItem);
+            finalSource = buildVideoSource(mediaSourceFactory, alternateUrl);
         }
+
+        TrackSelectionParameters.Builder builder = player.getTrackSelectionParameters().buildUpon();
+        reapplyQualitySelection(builder);
+        applySubtitlePreference(builder);
+        player.setTrackSelectionParameters(builder.build());
 
         player.setMediaSource(finalSource);
         player.prepare();
         player.seekTo(currentPos);
-        player.setPlayWhenReady(isPlaying);
+        player.setPlayWhenReady(true);
 
         Toast.makeText(this, "Đã chuyển luồng âm thanh: " + label, Toast.LENGTH_SHORT).show();
     }
 
-    @androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
-    private void playDirectMediaSourceUrl(String targetUrl, long seekPos, boolean playWhenReady) {
-        if (player == null) return;
-
-        DefaultDataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(this);
-
-        // Đóng gói Subtitle configurations
+    private MediaItem buildVideoItem(String targetUrl) {
         List<MediaItem.SubtitleConfiguration> subtitleConfigs = new ArrayList<>();
-        if (!subtitleTracksList.isEmpty()) {
+        if (subtitleTracksList != null && !subtitleTracksList.isEmpty()) {
             for (SubtitleOption sub : subtitleTracksList) {
                 if (sub.getSubtitleUrl() != null && !sub.getSubtitleUrl().trim().isEmpty()) {
-                    MediaItem.SubtitleConfiguration config = new MediaItem.SubtitleConfiguration.Builder(Uri.parse(sub.getSubtitleUrl()))
-                            .setMimeType(MimeTypes.TEXT_VTT)
+                    String subUrl = sub.getSubtitleUrl().trim();
+                    String mimeType = subUrl.toLowerCase().endsWith(".srt")
+                            ? MimeTypes.APPLICATION_SUBRIP : MimeTypes.TEXT_VTT;
+
+                    MediaItem.SubtitleConfiguration config = new MediaItem.SubtitleConfiguration.Builder(Uri.parse(subUrl))
+                            .setMimeType(mimeType)
                             .setLanguage(sub.getLanguage())
                             .setSelectionFlags(sub.getLanguage().equalsIgnoreCase("vi") ? C.SELECTION_FLAG_DEFAULT : 0)
                             .build();
                     subtitleConfigs.add(config);
                 }
             }
+        } else {
+            MediaItem.SubtitleConfiguration defaultVi = new MediaItem.SubtitleConfiguration.Builder(
+                    Uri.parse("https://storage.googleapis.com/exoplayer-test-media-1/webvtt/numeric-subtitles-en.vtt"))
+                    .setMimeType(MimeTypes.TEXT_VTT)
+                    .setLanguage("vi")
+                    .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                    .build();
+            subtitleConfigs.add(defaultVi);
         }
 
-        MediaItem videoItem = new MediaItem.Builder()
+        return new MediaItem.Builder()
                 .setUri(Uri.parse(targetUrl))
                 .setSubtitleConfigurations(subtitleConfigs)
                 .build();
+    }
 
-        MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(videoItem);
+    @OptIn(markerClass = UnstableApi.class)
+    private MediaSource buildVideoSource(DefaultMediaSourceFactory factory, String targetUrl) {
+        return factory.createMediaSource(buildVideoItem(targetUrl));
+    }
+
+    private void applySubtitlePreference(TrackSelectionParameters.Builder builder) {
+        if (subtitlesEnabled) {
+            builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false);
+            if (preferredSubtitleLang != null && !preferredSubtitleLang.isEmpty()) {
+                builder.setPreferredTextLanguage(preferredSubtitleLang);
+            }
+        } else {
+            builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true);
+        }
+    }
+
+    @OptIn(markerClass = UnstableApi.class)
+    private void playDirectMediaSourceUrl(String targetUrl, long seekPos, boolean playWhenReady) {
+        if (player == null) return;
+
+        DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this);
+        MediaSource videoSource = buildVideoSource(mediaSourceFactory, targetUrl);
+
+        TrackSelectionParameters.Builder builder = player.getTrackSelectionParameters().buildUpon();
+        reapplyQualitySelection(builder);
+        applySubtitlePreference(builder);
+        player.setTrackSelectionParameters(builder.build());
 
         player.setMediaSource(videoSource);
         player.prepare();
@@ -547,6 +843,7 @@ public class PlayerActivity extends AppCompatActivity {
         if (player != null) {
             TrackSelectionParameters parameters = player.getTrackSelectionParameters()
                     .buildUpon()
+                    .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
                     .setPreferredAudioLanguage(langCode)
                     .build();
             player.setTrackSelectionParameters(parameters);
@@ -554,65 +851,118 @@ public class PlayerActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Hiển thị danh sách Phụ Đề Rời CC do Admin đăng ký cho phim này.
-     */
     private void showSubtitleDialog() {
         if (isWebViewMode) {
             Toast.makeText(this, "Trang web xử lý phụ đề CC trực tiếp trong trình phát!", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        if (subtitleTracksList != null && !subtitleTracksList.isEmpty()) {
-            String[] names = new String[subtitleTracksList.size() + 1];
-            names[0] = "Tắt phụ đề (CC Off)";
-            for (int i = 0; i < subtitleTracksList.size(); i++) {
-                names[i + 1] = subtitleTracksList.get(i).getName();
-            }
-            new AlertDialog.Builder(this)
-                    .setTitle("Chọn phụ đề rời đồng bộ (CC)")
-                    .setItems(names, (dialog, which) -> {
-                        if (which == 0) {
-                            disableSubtitles();
-                        } else {
-                            SubtitleOption selected = subtitleTracksList.get(which - 1);
-                            enableSubtitles(selected.getLanguage(), selected.getName());
-                        }
-                    })
-                    .setNegativeButton("Hủy", null)
-                    .show();
-        } else {
-            String[] subOptions = {"Tắt phụ đề (CC Off)"};
+        List<String> namesList = new ArrayList<>();
+        final List<Runnable> actionsList = new ArrayList<>();
 
-            new AlertDialog.Builder(this)
-                    .setTitle("Chọn phụ đề rời đồng bộ (CC)")
-                    .setItems(subOptions, (dialog, which) -> disableSubtitles())
-                    .setNegativeButton("Hủy", null)
-                    .show();
+        namesList.add(subtitlesEnabled ? "✓ Đang bật — Bấm để Tắt phụ đề (CC Off)" : "Tắt phụ đề (CC Off)");
+        actionsList.add(this::disableSubtitles);
+
+        if (subtitleTracksList != null && !subtitleTracksList.isEmpty()) {
+            for (SubtitleOption sub : subtitleTracksList) {
+                final SubtitleOption s = sub;
+                boolean active = subtitlesEnabled && s.getLanguage().equalsIgnoreCase(preferredSubtitleLang);
+                namesList.add((active ? "✓ " : "") + s.getName() + " (CC)");
+                actionsList.add(() -> selectSubtitleOption(s));
+            }
         }
+
+        if (player != null) {
+            for (Tracks.Group group : player.getCurrentTracks().getGroups()) {
+                if (group.getType() != C.TRACK_TYPE_TEXT) continue;
+                for (int i = 0; i < group.length; i++) {
+                    String lang = group.getTrackFormat(i).language;
+                    String label = group.getTrackFormat(i).label;
+                    String name = label != null && !label.isEmpty() ? label
+                            : (lang != null && !lang.isEmpty() ? "Phụ đề " + lang : "Phụ đề nhúng");
+                    final Tracks.Group g = group;
+                    final int idx = i;
+                    final String lCode = lang;
+                    final String shownName = name;
+
+                    boolean active = subtitlesEnabled && group.isTrackSelected(i);
+                    namesList.add((active ? "✓ " : "") + shownName + " (trong video)");
+                    actionsList.add(() -> selectEmbeddedSubtitle(g, idx, lCode, shownName));
+                }
+            }
+        }
+
+        String[] names = namesList.toArray(new String[0]);
+        new AlertDialog.Builder(this)
+                .setTitle("Chọn phụ đề rời đồng bộ (CC)")
+                .setItems(names, (dialog, which) -> actionsList.get(which).run())
+                .setNegativeButton("Hủy", null)
+                .show();
+    }
+
+    @OptIn(markerClass = UnstableApi.class)
+    private void selectSubtitleOption(SubtitleOption selected) {
+        subtitlesEnabled = true;
+        preferredSubtitleLang = selected.getLanguage();
+
+        if (player == null) return;
+
+        TrackSelectionParameters.Builder builder = player.getTrackSelectionParameters().buildUpon();
+        builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false);
+        builder.setPreferredTextLanguage(selected.getLanguage());
+
+        Tracks.Group textGroup = null;
+        int trackIndex = -1;
+
+        for (Tracks.Group group : player.getCurrentTracks().getGroups()) {
+            if (group.getType() != C.TRACK_TYPE_TEXT) continue;
+            for (int i = 0; i < group.length; i++) {
+                String lang = group.getTrackFormat(i).language;
+                if (lang != null && lang.equalsIgnoreCase(selected.getLanguage())) {
+                    textGroup = group;
+                    trackIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (textGroup != null && trackIndex >= 0) {
+            builder.clearOverridesOfType(C.TRACK_TYPE_TEXT);
+            builder.setOverrideForType(new TrackSelectionOverride(textGroup.getMediaTrackGroup(), trackIndex));
+        }
+
+        player.setTrackSelectionParameters(builder.build());
+        Toast.makeText(this, "Đã bật phụ đề: " + selected.getName(), Toast.LENGTH_SHORT).show();
+    }
+
+    @OptIn(markerClass = UnstableApi.class)
+    private void selectEmbeddedSubtitle(Tracks.Group group, int trackIndex, String langCode, String label) {
+        subtitlesEnabled = true;
+        if (langCode != null) preferredSubtitleLang = langCode;
+
+        if (player == null) return;
+
+        TrackSelectionParameters params = player.getTrackSelectionParameters()
+                .buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                .setOverrideForType(new TrackSelectionOverride(group.getMediaTrackGroup(), trackIndex))
+                .build();
+        player.setTrackSelectionParameters(params);
+        Toast.makeText(this, "Đã bật phụ đề: " + label, Toast.LENGTH_SHORT).show();
     }
 
     private void disableSubtitles() {
+        subtitlesEnabled = false;
         if (player != null) {
             TrackSelectionParameters parameters = player.getTrackSelectionParameters()
                     .buildUpon()
                     .setPreferredTextLanguage(null)
+                    .clearOverridesOfType(C.TRACK_TYPE_TEXT)
                     .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                     .build();
             player.setTrackSelectionParameters(parameters);
             Toast.makeText(this, "Đã tắt phụ đề CC", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void enableSubtitles(String langCode, String langLabel) {
-        if (player != null) {
-            TrackSelectionParameters parameters = player.getTrackSelectionParameters()
-                    .buildUpon()
-                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                    .setPreferredTextLanguage(langCode)
-                    .build();
-            player.setTrackSelectionParameters(parameters);
-            Toast.makeText(this, "Đã bật phụ đề: " + langLabel, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -641,20 +991,35 @@ public class PlayerActivity extends AppCompatActivity {
         Toast.makeText(this, "Tốc độ phát: " + speedLabel, Toast.LENGTH_SHORT).show();
     }
 
+    private void showBuffering(boolean show) {
+        if (progressBuffering != null) {
+            progressBuffering.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+    }
+
     private void playYouTubeVideo(String youtubeId) {
         playerView.setVisibility(View.GONE);
         wvYouTubePlayer.setVisibility(View.VISIBLE);
+        if (tvQualityBadge != null) tvQualityBadge.setVisibility(View.GONE);
+        showBuffering(true);
 
         WebSettings webSettings = wvYouTubePlayer.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setMediaPlaybackRequiresUserGesture(false);
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
         webSettings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
         if (Build.VERSION.SDK_INT >= 21) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
 
-        wvYouTubePlayer.setWebViewClient(new WebViewClient());
+        wvYouTubePlayer.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                showBuffering(false);
+            }
+        });
         wvYouTubePlayer.setWebChromeClient(new WebChromeClient());
 
         String iframeHtml = "<!DOCTYPE html><html><head>"
@@ -679,18 +1044,27 @@ public class PlayerActivity extends AppCompatActivity {
     private void playWebVideo(String url) {
         playerView.setVisibility(View.GONE);
         wvYouTubePlayer.setVisibility(View.VISIBLE);
+        if (tvQualityBadge != null) tvQualityBadge.setVisibility(View.GONE);
+        showBuffering(true);
 
         WebSettings webSettings = wvYouTubePlayer.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setMediaPlaybackRequiresUserGesture(false);
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
         webSettings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
 
         if (Build.VERSION.SDK_INT >= 21) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
 
-        wvYouTubePlayer.setWebViewClient(new WebViewClient());
+        wvYouTubePlayer.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                showBuffering(false);
+            }
+        });
         wvYouTubePlayer.setWebChromeClient(new WebChromeClient());
         wvYouTubePlayer.loadUrl(url);
 
@@ -700,13 +1074,37 @@ public class PlayerActivity extends AppCompatActivity {
         }
     }
 
-    @androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
+    @OptIn(markerClass = UnstableApi.class)
     private void playDirectMediaVideo() {
         wvYouTubePlayer.setVisibility(View.GONE);
         playerView.setVisibility(View.VISIBLE);
 
         if (player == null) {
-            player = new ExoPlayer.Builder(this).build();
+            trackSelector = new DefaultTrackSelector(this);
+
+            DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+                    .setBufferDurationsMs(10000, 30000, 1000, 2000)
+                    .setPrioritizeTimeOverSizeThresholds(true)
+                    .build();
+
+            DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
+                    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+                    .setEnableDecoderFallback(true);
+
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                    .build();
+
+            player = new ExoPlayer.Builder(this)
+                    .setTrackSelector(trackSelector)
+                    .setLoadControl(loadControl)
+                    .setRenderersFactory(renderersFactory)
+                    .setSeekBackIncrementMs(10000)
+                    .setSeekForwardIncrementMs(10000)
+                    .setAudioAttributes(audioAttributes, true)
+                    .setWakeMode(C.WAKE_MODE_NETWORK)
+                    .build();
             playerView.setPlayer(player);
 
             mediaSession = new MediaSession.Builder(this, player).build();
@@ -714,7 +1112,15 @@ public class PlayerActivity extends AppCompatActivity {
             player.addListener(new Player.Listener() {
                 @Override
                 public void onPlayerError(@NonNull PlaybackException error) {
-                    Toast.makeText(PlayerActivity.this, "Không thể phát video!", Toast.LENGTH_LONG).show();
+                    showBuffering(false);
+                    String msg = "Không thể phát video!";
+                    Throwable cause = error.getCause();
+                    if (cause != null && cause.getMessage() != null) {
+                        msg += " (" + cause.getMessage() + ")";
+                    } else if (error.getMessage() != null) {
+                        msg += " (" + error.getMessage() + ")";
+                    }
+                    Toast.makeText(PlayerActivity.this, msg, Toast.LENGTH_LONG).show();
                     if (layoutTopBar != null) {
                         layoutTopBar.setVisibility(View.VISIBLE);
                         layoutTopBar.bringToFront();
@@ -722,18 +1128,61 @@ public class PlayerActivity extends AppCompatActivity {
                 }
 
                 @Override
+                public void onPlaybackStateChanged(int state) {
+                    if (state == Player.STATE_BUFFERING) {
+                        showBuffering(true);
+                    } else {
+                        showBuffering(false);
+                    }
+                }
+
+                @Override
+                public void onVideoSizeChanged(@NonNull VideoSize videoSize) {
+                    updateQualityBadge();
+                }
+
+                @Override
+                public void onTracksChanged(@NonNull Tracks tracks) {
+                    if (qualityHeight != 0 && player != null) {
+                        TrackSelectionOverride override = findBestVideoOverride(qualityHeight);
+                        if (override != null) {
+                            TrackSelectionParameters params = player.getTrackSelectionParameters()
+                                    .buildUpon()
+                                    .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
+                                    .setOverrideForType(override)
+                                    .build();
+                            player.setTrackSelectionParameters(params);
+                        }
+                    }
+                    updateQualityBadge();
+                }
+
+                @Override
                 public void onIsPlayingChanged(boolean isPlaying) {
                     updatePipParams();
+                    updatePlayPauseIcon();
                 }
             });
 
-            playDirectMediaSourceUrl(videoUrl, 0, true);
+            updateVolumeIcon();
+
+            String target = (activeAlternateAudioUrl != null && !isAudioOnlyUrl(activeAlternateAudioUrl))
+                    ? activeAlternateAudioUrl
+                    : videoUrl;
+            if (activeAlternateAudioUrl != null && isAudioOnlyUrl(activeAlternateAudioUrl)) {
+                switchToAlternateAudioUrl(activeAlternateAudioUrl,
+                        activeAlternateLabel != null ? activeAlternateLabel : "Dub");
+                if (resumePosition > 0) player.seekTo(resumePosition);
+                player.setPlayWhenReady(resumePlayWhenReady);
+            } else {
+                playDirectMediaSourceUrl(target, resumePosition, resumePlayWhenReady);
+            }
         }
     }
 
-    // =========================================================================
-    // XỬ LÝ CHẾ ĐỘ PICTURE-IN-PICTURE (PiP)
-    // =========================================================================
+    private boolean isAudioOnlyUrl(String url) {
+        return url != null && url.matches(".*\\.(mp3|m4a|aac|wav|ogg)(\\?.*)?$");
+    }
 
     private void enterPipMode() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -800,19 +1249,16 @@ public class PlayerActivity extends AppCompatActivity {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
         if (isInPictureInPictureMode) {
             layoutTopBar.setVisibility(View.GONE);
-            if (layoutBottomControls != null) layoutBottomControls.setVisibility(View.GONE);
             scrollViewMovieDetail.setVisibility(View.GONE);
             playerView.setUseController(false);
         } else {
             layoutTopBar.setVisibility(View.VISIBLE);
-            if (layoutBottomControls != null) layoutBottomControls.setVisibility(View.VISIBLE);
             if (!isFullscreen) {
                 scrollViewMovieDetail.setVisibility(View.VISIBLE);
             }
             playerView.setUseController(true);
 
             if (layoutTopBar != null) layoutTopBar.bringToFront();
-            if (layoutBottomControls != null) layoutBottomControls.bringToFront();
         }
     }
 
@@ -822,12 +1268,25 @@ public class PlayerActivity extends AppCompatActivity {
             mediaSession = null;
         }
         if (player != null) {
+            try {
+                resumePosition = player.getCurrentPosition();
+                resumePlayWhenReady = player.getPlayWhenReady();
+            } catch (Exception ignored) {}
             player.release();
             player = null;
-            playerView.setPlayer(null);
+            trackSelector = null;
+            if (playerView != null) playerView.setPlayer(null);
         }
-        if (wvYouTubePlayer != null) {
-            wvYouTubePlayer.loadUrl("about:blank");
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (!isWebViewMode && player == null && videoUrl != null && !videoUrl.isEmpty()) {
+            playDirectMediaVideo();
+        }
+        if (isWebViewMode && wvYouTubePlayer != null) {
+            wvYouTubePlayer.onResume();
         }
     }
 
@@ -835,7 +1294,11 @@ public class PlayerActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !isInPictureInPictureMode()) {
-            releasePlayer();
+            if (isWebViewMode && wvYouTubePlayer != null) {
+                wvYouTubePlayer.onPause();
+            } else {
+                releasePlayer();
+            }
         }
     }
 
@@ -848,5 +1311,9 @@ public class PlayerActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         releasePlayer();
+        if (wvYouTubePlayer != null) {
+            wvYouTubePlayer.loadUrl("about:blank");
+            wvYouTubePlayer.destroy();
+        }
     }
 }

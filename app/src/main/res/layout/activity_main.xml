@@ -232,7 +232,7 @@
 
             </RelativeLayout>
 
-            <!-- 2. SECTION HEADER: TITLE & BUTTON SWITCH VIEW -->
+            <!-- 2. SECTION HEADER 1: RECENTLY ADDED (TOP 10) -->
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -258,7 +258,7 @@
                         android:id="@+id/tvSectionTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Recently Added (Top 10)"
+                        android:text="Mới cập nhật"
                         android:textColor="@android:color/white"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -281,6 +281,8 @@
             </RelativeLayout>
 
             <!-- 3. DANH SÁCH PHIM RECYCLERVIEW (Ngang Top 10 hoặc Lưới 3 Cột 18 Phim/Trang) -->
+
+            <!-- 4. SECTION HEADER 2: TOP 10 PHIM TRONG THÁNG (HARDCODE DEMO URL) -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvVideos"
                 android:layout_width="match_parent"
@@ -289,7 +291,50 @@
                 android:paddingHorizontal="8dp"
                 tools:listitem="@layout/item_video_horizontal" />
 
-            <!-- 4. THANH PHÂN TRANG CHO CHẾ ĐỘ XEM TẤT CẢ (LƯỚI 3 CỘT, 18 PHIM / TRANG) -->
+            <RelativeLayout
+                android:id="@+id/layoutTop10MonthHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"
+                android:paddingHorizontal="16dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:layout_width="3dp"
+                        android:layout_height="18dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="#E50914" />
+
+                    <TextView
+                        android:id="@+id/tvTop10MonthTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Top 10 Phim Trong Tháng 🔥"
+                        android:textColor="@android:color/white"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+            </RelativeLayout>
+
+            <!-- 5. DANH SÁCH TOP 10 PHIM TRONG THÁNG (RECYCLERVIEW NGANG DEMO) -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvTop10Month"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:paddingHorizontal="8dp"
+                tools:listitem="@layout/item_video_horizontal" />
+
+            <!-- 6. THANH PHÂN TRANG CHO CHẾ ĐỘ XEM TẤT CẢ (LƯỚI 3 CỘT, 18 PHIM / TRANG) -->
             <LinearLayout
                 android:id="@+id/layoutPagination"
                 android:layout_width="match_parent"

@@ -1,7 +1,6 @@
 package com.example.pgck2;
 
 import android.app.ProgressDialog;
-import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -50,6 +49,7 @@ import java.util.Map;
 /**
  * MainActivity hiển thị danh sách phim/video đẳng cấp Cinema.
  * Hỗ trợ ViewPager2 Slider phim nổi bật (Popular), Tìm kiếm thời gian thực,
+ * Danh sách Top 10 Phim Trong Tháng (Tiếng Việt 100%, cho phép bạn điền URL video),
  * Chuyển đổi 2 chế độ View (Mặc Định Cuộn Ngang Top 10 vs Xem Tất Cả Lưới 3 Cột 18 Phim/Trang Phân Trang),
  * Màn hình Chi Tiết Phim Netflix Style (Trailer Preview + Quản lý Tập Phim Episodes + Năm/Tháng phát hành),
  * Bộ Lọc Thể Loại 3 Trạng Thái Netflix Style (Bình thường / ✓ Bắt buộc / ✕ Blacklist),
@@ -64,6 +64,12 @@ public class MainActivity extends AppCompatActivity {
     private VideoAdapter videoAdapter;
     private List<Video> fullVideoList;
     private List<Video> currentFilteredList;
+
+    // Danh sách Top 10 Phim Trong Tháng Demo Tiếng Việt
+    private RecyclerView rvTop10Month;
+    private VideoAdapter top10MonthAdapter;
+    private List<Video> top10MonthList;
+    private View layoutTop10MonthHeader;
 
     private ViewPager2 viewPagerPopular;
     private PopularVideoAdapter popularVideoAdapter;
@@ -188,6 +194,7 @@ public class MainActivity extends AppCompatActivity {
         fullVideoList = new ArrayList<>();
         currentFilteredList = new ArrayList<>();
         popularVideoList = new ArrayList<>();
+        top10MonthList = new ArrayList<>();
         globalGenreList = new ArrayList<>();
         genreFilterStates = new HashMap<>();
 
@@ -208,6 +215,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void initViews() {
         rvVideos = findViewById(R.id.rvVideos);
+        rvTop10Month = findViewById(R.id.rvTop10Month);
+        layoutTop10MonthHeader = findViewById(R.id.layoutTop10MonthHeader);
+
         btnToggleAdmin = findViewById(R.id.btnToggleAdmin);
         btnToggleSearch = findViewById(R.id.btnToggleSearch);
         btnToggleViewMode = findViewById(R.id.btnToggleViewMode);
@@ -239,33 +249,33 @@ public class MainActivity extends AppCompatActivity {
         }
 
         fullVideoList.clear();
-        Video v1 = new Video("Big Buck Bunny 4K", "Bộ phim hoạt hình 3D nổi tiếng kể về chú thỏ khổng lồ Bunny trong rừng xanh.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", true);
+        Video v1 = new Video("Thỏ Bunny Khổng Lồ 4K", "Bộ phim hoạt hình 3D nổi tiếng kể về chú thỏ khổng lồ Bunny trong rừng xanh.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", true);
         v1.setGenres(new ArrayList<>(Arrays.asList("Hoạt Hình", "Hài Hước", "Phiêu Lưu")));
         v1.setReleaseYear("2024");
         v1.setReleaseMonth("10");
         v1.getAudioTracks().add(new AudioTrackOption("Tiếng Việt (Lồng tiếng / Dub)", "vi", ""));
-        v1.getAudioTracks().add(new AudioTrackOption("English (Original)", "en", ""));
+        v1.getAudioTracks().add(new AudioTrackOption("Tiếng Anh (Gốc)", "en", ""));
         v1.getSubtitleTracks().add(new SubtitleOption("Tiếng Việt (VTT)", "vi", "https://storage.googleapis.com/exoplayer-test-media-1/webvtt/numeric-subtitles-en.vtt"));
-        v1.getSubtitleTracks().add(new SubtitleOption("English (VTT)", "en", "https://storage.googleapis.com/exoplayer-test-media-1/webvtt/numeric-subtitles-en.vtt"));
-        v1.getEpisodes().add(new Episode(1, "Tập 1: Rừng Xanh", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8"));
-        v1.getEpisodes().add(new Episode(2, "Tập 2: Thỏ Bunny Khổng Lồ", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8"));
-        v1.getEpisodes().add(new Episode(3, "Tập 3: Cuộc Chiến Cuối Cùng", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8"));
+        v1.getSubtitleTracks().add(new SubtitleOption("Tiếng Anh (VTT)", "en", "https://storage.googleapis.com/exoplayer-test-media-1/webvtt/numeric-subtitles-en.vtt"));
+        v1.getEpisodes().add(new Episode(1, "Tập 1: Rừng Xanh Khoáng Đạt", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8"));
+        v1.getEpisodes().add(new Episode(2, "Tập 2: Chú Thỏ Bunny Dũng Cảm", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8"));
+        v1.getEpisodes().add(new Episode(3, "Tập 3: Trận Chiến Bảo Vệ Rừng", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8"));
 
-        Video v2 = new Video("Tears of Steel Sci-Fi", "Phim viễn tưởng kỹ xảo đỉnh cao về cuộc chiến bảo vệ Trái Đất.", "https://img.youtube.com/vi/e1Ebe1sB70M/hqdefault.jpg", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", true);
+        Video v2 = new Video("Nước Mắt Thép: Viễn Tưởng 2024", "Phim viễn tưởng kỹ xảo đỉnh cao về cuộc chiến bảo vệ Trái Đất khỏi thảm họa robot.", "https://img.youtube.com/vi/e1Ebe1sB70M/hqdefault.jpg", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", true);
         v2.setGenres(new ArrayList<>(Arrays.asList("Viễn Tưởng", "Hành Động")));
         v2.setReleaseYear("2024");
 
-        Video v3 = new Video("Sintel Fantasy Adventure", "Hành trình tìm kiếm rồng con kỳ thú của cô gái trẻ Sintel.", "https://img.youtube.com/vi/e1Ebe1sB70M/hqdefault.jpg", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", true);
+        Video v3 = new Video("Sintel: Cuộc Phiêu Lưu Kì Thú", "Hành trình tìm kiếm chú rồng con kỳ thú của cô gái trẻ dũng cảm Sintel.", "https://img.youtube.com/vi/e1Ebe1sB70M/hqdefault.jpg", "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8", true);
         v3.setGenres(new ArrayList<>(Arrays.asList("Phiêu Lưu", "Hoạt Hình")));
         v3.setReleaseYear("2023");
 
-        Video v4 = new Video("Phim Chó Thông Minh", "Những khoảnh khắc đáng yêu và thông minh của chú chó cún.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://www.youtube.com/watch?v=aqz-KE-bpKQ", false);
+        Video v4 = new Video("Phim Chó Cún Thông Minh", "Những khoảnh khắc đáng yêu và thông minh hài hước của chú chó cún xinh xắn.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://www.youtube.com/watch?v=aqz-KE-bpKQ", false);
         v4.setGenres(new ArrayList<>(Arrays.asList("Hài Hước", "Hành Động")));
 
-        Video v5 = new Video("COW - Phim Bò Ăn Cỏ", "Thế giới động vật thiên nhiên hoang dã sinh động.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://www.youtube.com/watch?v=aqz-KE-bpKQ", false);
+        Video v5 = new Video("Thế Giới Động Vật: Đàn Bò Ăn Cỏ", "Thước phim tài liệu thiên nhiên hoang dã sinh động về đàn bò trên đồng cỏ.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://www.youtube.com/watch?v=aqz-KE-bpKQ", false);
         v5.setGenres(new ArrayList<>(Arrays.asList("Hoạt Hình", "Phiêu Lưu")));
 
-        Video v6 = new Video("Phim Voi Khổng Lồ", "Cuộc phiêu lưu viễn tưởng kỳ thú trên vùng đất hoang sơ.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://www.youtube.com/watch?v=aqz-KE-bpKQ", false);
+        Video v6 = new Video("Chúa Tể Rừng Xanh: Voi Khổng Lồ", "Cuộc phiêu lưu viễn tưởng kỳ thú trên vùng đất hoang sơ kỳ vĩ.", "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg", "https://www.youtube.com/watch?v=aqz-KE-bpKQ", false);
         v6.setGenres(new ArrayList<>(Arrays.asList("Phiêu Lưu", "Viễn Tưởng")));
 
         fullVideoList.add(v1);
@@ -277,6 +287,129 @@ public class MainActivity extends AppCompatActivity {
 
         currentFilteredList.clear();
         currentFilteredList.addAll(fullVideoList);
+
+        // Nạp 10 video mẫu cứng Tiếng Việt cho TOP 10 PHIM TRONG THÁNG (Cho phép bạn tự thay thế URL Video)
+        top10MonthList.clear();
+
+        // 1. Phim Top 1
+        Video t1 = new Video(
+                "Paddleton",
+                "Demo",
+                "https://image.tmdb.org/t/p/w600_and_h900_bestv2/gtssTSvNgY8132hPRtp1DbciYJ6.jpg",
+                "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8" // Thay URL video Top 1 tại đây
+        );
+        t1.setReleaseYear("2024");
+        t1.setReleaseMonth("10");
+        t1.setGenres(new ArrayList<>(Arrays.asList("Hành Động", "Viễn Tưởng", "Phiêu Lưu")));
+        top10MonthList.add(t1);
+
+        // 2. Phim Top 2
+        Video t2 = new Video(
+                "Orange",
+                "Demo",
+                "https://thumbs.dreamstime.com/b/cute-cat-sleeping-street-car-random-58655731.jpg",
+                "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8" // Thay URL video Top 2 tại đây
+        );
+        t2.setReleaseYear("2024");
+        t2.setReleaseMonth("09");
+        t2.setGenres(new ArrayList<>(Arrays.asList("Hành Động", "Tình Cảm")));
+        top10MonthList.add(t2);
+
+        // 3. Phim Top 3
+        Video t3 = new Video(
+                "Flyboys",
+                "Demo",
+                "https://image.tmdb.org/t/p/w600_and_h900_bestv2/ArKIGwJohxskEIjVOqEkzsEXkpc.jpg",
+                "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8" // Thay URL video Top 3 tại đây
+        );
+        t3.setReleaseYear("2024");
+        t3.setReleaseMonth("08");
+        t3.setGenres(new ArrayList<>(Arrays.asList("Hoạt Hình", "Hài Hước", "Phiêu Lưu")));
+        top10MonthList.add(t3);
+
+        // 4. Phim Top 4
+        Video t4 = new Video(
+                "The Stranger",
+                "Những hiện tượng kỳ bí liên tục xảy ra khiến nhóm thám tử trẻ phải dấn thân vào ngôi biệt thự ma quái.",
+                "https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1738704267i/49552.jpg",
+                "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8" // Thay URL video Top 4 tại đây
+        );
+        t4.setReleaseYear("2024");
+        t4.setReleaseMonth("07");
+        t4.setGenres(new ArrayList<>(Arrays.asList("Kinh Dị", "Phiêu Lưu")));
+        top10MonthList.add(t4);
+
+        // 5. Phim Top 5
+        Video t5 = new Video(
+                "Cuộc Phiêu Lưu Của Sintel Vùng Đất Rồng",
+                "Hành trình vượt qua muôn vàn trắc trở của cô gái trẻ Sintel trên đường tìm lại chú rồng con đi lạc.",
+                "https://img.youtube.com/vi/e1Ebe1sB70M/hqdefault.jpg",
+                "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8" // Thay URL video Top 5 tại đây
+        );
+        t5.setReleaseYear("2023");
+        t5.setReleaseMonth("12");
+        t5.setGenres(new ArrayList<>(Arrays.asList("Hoạt Hình", "Phiêu Lưu", "Viễn Tưởng")));
+        top10MonthList.add(t5);
+
+        // 6. Phim Top 6
+        Video t6 = new Video(
+                "Tiếng Gọi Nơi Hoang Dã: Thung Lũng Tuyết",
+                "Khám phá thiên nhiên hoang dã hùng vĩ cùng lòng dũng cảm phi thường của muôn loài động vật.",
+                "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg",
+                "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8" // Thay URL video Top 6 tại đây
+        );
+        t6.setReleaseYear("2024");
+        t6.setReleaseMonth("06");
+        t6.setGenres(new ArrayList<>(Arrays.asList("Phiêu Lưu", "Hoạt Hình")));
+        top10MonthList.add(t6);
+
+        // 7. Phim Top 7
+        Video t7 = new Video(
+                "Hài Hước Phố Cổ: Chuyện Tình Bún Đậu",
+                "Những tình huống dở khóc dở cười giữa hai gia đình hàng xóm truyền thống tại Hà Nội.",
+                "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg",
+                "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8" // Thay URL video Top 7 tại đây
+        );
+        t7.setReleaseYear("2024");
+        t7.setReleaseMonth("05");
+        t7.setGenres(new ArrayList<>(Arrays.asList("Hài Hước", "Tình Cảm")));
+        top10MonthList.add(t7);
+
+        // 8. Phim Top 8
+        Video t8 = new Video(
+                "Vệ Binh Vũ Trụ: Kỷ Nguyên Mới",
+                "Hành trình khám phá các hành tinh xa xôi và chiến đấu bảo vệ nền hòa bình ngân hà.",
+                "https://img.youtube.com/vi/e1Ebe1sB70M/hqdefault.jpg",
+                "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8" // Thay URL video Top 8 tại đây
+        );
+        t8.setReleaseYear("2024");
+        t8.setReleaseMonth("04");
+        t8.setGenres(new ArrayList<>(Arrays.asList("Viễn Tưởng", "Hành Động")));
+        top10MonthList.add(t8);
+
+        // 9. Phim Top 9
+        Video t9 = new Video(
+                "Bóng Đêm Kinh Hoàng: Lời Nguyền Cổ Xưa",
+                "Cuộc truy tìm sự thật kinh hoàng đằng sau những lời nguyền đã bị lãng quên hàng thế kỷ.",
+                "https://img.youtube.com/vi/e1Ebe1sB70M/hqdefault.jpg",
+                "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8" // Thay URL video Top 9 tại đây
+        );
+        t9.setReleaseYear("2024");
+        t9.setReleaseMonth("03");
+        t9.setGenres(new ArrayList<>(Arrays.asList("Kinh Dị", "Hành Động")));
+        top10MonthList.add(t9);
+
+        // 10. Phim Top 10
+        Video t10 = new Video(
+                "Thế Giới Động Vật: Vương Quốc Voi Khổng Lồ",
+                "Thước phim tài liệu sống động và chân thực về đàn voi trong rừng nguyên sinh Châu Phi.",
+                "https://img.youtube.com/vi/aqz-KE-bpKQ/hqdefault.jpg",
+                "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8" // Thay URL video Top 10 tại đây
+        );
+        t10.setReleaseYear("2024");
+        t10.setReleaseMonth("02");
+        t10.setGenres(new ArrayList<>(Arrays.asList("Phiêu Lưu", "Hoạt Hình")));
+        top10MonthList.add(t10);
 
         updatePopularSliderList();
     }
@@ -335,6 +468,9 @@ public class MainActivity extends AppCompatActivity {
     private void applyViewMode() {
         if (isAllViewMode) {
             if (layoutPopularSlider != null) layoutPopularSlider.setVisibility(View.GONE);
+            if (layoutTop10MonthHeader != null) layoutTop10MonthHeader.setVisibility(View.GONE);
+            if (rvTop10Month != null) rvTop10Month.setVisibility(View.GONE);
+
             if (tvSectionTitle != null) tvSectionTitle.setText("Tất Cả Phim (" + currentFilteredList.size() + ")");
             if (btnToggleViewMode != null) btnToggleViewMode.setText("Tất Cả");
             if (btnSwitchViewMode != null) btnSwitchViewMode.setText("Chế độ Mặc định ➔");
@@ -346,7 +482,10 @@ public class MainActivity extends AppCompatActivity {
             updatePaginationUI();
         } else {
             if (layoutPopularSlider != null) layoutPopularSlider.setVisibility(View.VISIBLE);
-            if (tvSectionTitle != null) tvSectionTitle.setText("Recently Added (Top 10)");
+            if (layoutTop10MonthHeader != null) layoutTop10MonthHeader.setVisibility(View.VISIBLE);
+            if (rvTop10Month != null) rvTop10Month.setVisibility(View.VISIBLE);
+
+            if (tvSectionTitle != null) tvSectionTitle.setText("Phim Mới Cập Nhật (Top 10)");
             if (btnToggleViewMode != null) btnToggleViewMode.setText("Mặc Định");
             if (btnSwitchViewMode != null) btnSwitchViewMode.setText("Xem tất cả ➔");
 
@@ -486,6 +625,17 @@ public class MainActivity extends AppCompatActivity {
         );
         rvVideos.setAdapter(videoAdapter);
 
+        // Khởi tạo Adapter cho Top 10 Phim Trong Tháng Demo
+        top10MonthAdapter = new VideoAdapter(
+                this, top10MonthList,
+                this::openPlayerForVideo,
+                (video, position) -> showAddEditVideoDialog(video),
+                (video, position) -> confirmDeleteVideo(video)
+        );
+        rvTop10Month.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        top10MonthAdapter.setHorizontalMode(true);
+        rvTop10Month.setAdapter(top10MonthAdapter);
+
         popularVideoAdapter = new PopularVideoAdapter(this, popularVideoList);
         viewPagerPopular.setAdapter(popularVideoAdapter);
     }
@@ -564,6 +714,7 @@ public class MainActivity extends AppCompatActivity {
         btnToggleAdmin.setOnClickListener(v -> {
             isAdminMode = !isAdminMode;
             videoAdapter.setAdminMode(isAdminMode);
+            if (top10MonthAdapter != null) top10MonthAdapter.setAdminMode(isAdminMode);
 
             if (isAdminMode) {
                 fabAddVideo.setVisibility(View.VISIBLE);
@@ -616,9 +767,6 @@ public class MainActivity extends AppCompatActivity {
         applyViewMode();
     }
 
-    /**
-     * Dialog Thêm / Sửa Video Admin nâng cấp chuyên nghiệp (Năm, Tháng, Loại Phim, Quản lý Tập Episodes).
-     */
     private void showAddEditVideoDialog(Video videoToEdit) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_edit_video, null);
@@ -846,9 +994,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Dialog Admin Quản Lý Các Tập Phim (Episodes) - Cho phép Thêm/Sửa/Xóa từng tập kèm Dub & Sub CC riêng biệt!
-     */
     private void showAdminManageEpisodesDialog(TextView tvSummary, List<Episode> tempEpisodes) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("📺 Quản Lý Các Tập Phim (Episodes)");
@@ -919,9 +1064,6 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    /**
-     * Dialog Thêm / Sửa Chi Tiết Từng Tập Phim (Gồm URL Video Tập, Dubbing Riêng & Subtitles CC Riêng).
-     */
     private void showAddEditEpisodeDialog(Episode epToEdit, List<Episode> tempEpisodes, Runnable onUpdated) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(epToEdit != null ? "✏️ Sửa Tập Phim" : "➕ Thêm Tập Phim Mới");
@@ -1246,8 +1388,10 @@ public class MainActivity extends AppCompatActivity {
                 .setMessage("Bạn có chắc chắn muốn xóa video \"" + video.getTitle() + "\" không?")
                 .setPositiveButton("Xóa", (dialog, which) -> {
                     fullVideoList.remove(video);
+                    top10MonthList.remove(video);
                     filterVideoList(etSearchQuery.getText().toString());
                     updatePopularSliderList();
+                    if (top10MonthAdapter != null) top10MonthAdapter.notifyDataSetChanged();
 
                     if (db != null) {
                         db.collection("videos").document(video.getId()).delete()
