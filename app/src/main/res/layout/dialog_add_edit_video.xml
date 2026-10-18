@@ -27,10 +27,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="#1B1B28"
+            app:cardBackgroundColor="?attr/colorSurface"
             app:cardCornerRadius="10dp"
             app:cardElevation="2dp"
-            app:strokeColor="#2E2E42"
+            app:strokeColor="?attr/colorOutline"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -44,7 +44,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     android:text="📝 Thông Tin Phim"
-                    android:textColor="#181818"
+                    android:textColor="?android:attr/textColorPrimary"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
@@ -127,8 +127,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="4dp"
                     android:text="Loại Phim / Video:"
-                    android:textColor="#B9B9C7"
-                    android:textSize="12sp"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
 
                 <RadioGroup
@@ -136,7 +136,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
-                    android:orientation="horizontal">
+                    android:orientation="vertical">
 
                     <com.google.android.material.radiobutton.MaterialRadioButton
                         android:id="@+id/rbTypeStandard"
@@ -145,14 +145,14 @@
                         android:layout_marginEnd="16dp"
                         android:checked="true"
                         android:text="Phim Chiếu Rạp / Series"
-                        android:textSize="12sp" />
+                        android:textSize="14sp" />
 
                     <com.google.android.material.radiobutton.MaterialRadioButton
                         android:id="@+id/rbTypeTrailer"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Trailer Xem Trước"
-                        android:textSize="12sp" />
+                        android:textSize="14sp" />
 
                 </RadioGroup>
 
@@ -161,8 +161,8 @@
                     android:id="@+id/cbIsPopular"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="⭐ Thêm vào Phim Nổi Bật (Popular Slider)"
-                    android:textColor="#F2F2F7"
+                    android:text="Hiển thị trong phim nổi bật"
+                    android:textColor="?android:attr/textColorPrimary"
                     android:textSize="13sp"
                     app:buttonTint="#E50914" />
 
@@ -174,10 +174,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="#1B1B28"
+            app:cardBackgroundColor="?attr/colorSurface"
             app:cardCornerRadius="10dp"
             app:cardElevation="2dp"
-            app:strokeColor="#2E2E42"
+            app:strokeColor="?attr/colorOutline"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -191,7 +191,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
-                    android:textColor="#2424BD"
+                    android:textColor="?android:attr/textColorPrimary"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     tools:text="🏷️ Thể loại đã chọn: Hành Động, Kinh Dị" />
@@ -208,8 +208,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="4dp"
                         android:layout_weight="1"
-                        android:text="🏷️ Chọn Thể Loại"
-                        android:textSize="11sp" />
+                        android:text="Chọn thể loại"
+                        android:textSize="13sp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnManageGenres"
@@ -218,9 +218,9 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="4dp"
                         android:layout_weight="1"
-                        android:text="⚙️ Tạo / Xóa Thể Loại"
+                        android:text="Sửa thể loại"
                         android:textColor="#E50914"
-                        android:textSize="11sp"
+                        android:textSize="13sp"
                         app:strokeColor="#E50914" />
 
                 </LinearLayout>
@@ -233,10 +233,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="#1B1B28"
+            app:cardBackgroundColor="?attr/colorSurface"
             app:cardCornerRadius="10dp"
             app:cardElevation="2dp"
-            app:strokeColor="#2E2E42"
+            app:strokeColor="?attr/colorOutline"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -250,20 +250,27 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="6dp"
-                    android:textColor="#F2F2F7"
+                    android:textColor="?android:attr/textColorPrimary"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     tools:text="📺 Danh sách Tập: Tập 1, Tập 2, Tập 3" />
 
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Thêm video, phụ đề và lồng tiếng trong từng tập. Phim lẻ có thể thêm một tập."
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:textSize="13sp" />
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnManageEpisodes"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="📺 Quản Lý Các Tập Phim (Episodes)"
-                    android:textColor="#2E7D32"
-                    android:textSize="12sp"
-                    app:strokeColor="#2E7D32" />
+                    android:text="Quản lý tập phim"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="14sp"
+                    app:strokeColor="?attr/colorPrimary" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -273,10 +280,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="#2C2C2C"
+            app:cardBackgroundColor="?attr/colorSurface"
             app:cardCornerRadius="10dp"
             app:cardElevation="2dp"
-            app:strokeColor="#2E2E42"
+            app:strokeColor="?attr/colorOutline"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -289,8 +296,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
-                    android:text="🎬 Nguồn Video Gốc / Trailer (Link / Upload)"
-                    android:textColor="#F2F2F7"
+                    android:text="Trailer xem trước (không bắt buộc)"
+                    android:textColor="?android:attr/textColorPrimary"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
@@ -299,7 +306,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
-                    android:hint="URL Video Gốc (HLS .m3u8 / MP4 / YouTube)">
+                    android:hint="URL trailer">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etDialogVideoUrl"
@@ -315,91 +322,11 @@
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="📁 Chọn &amp; Upload File Video từ máy"
+                    android:text="Tải trailer từ thiết bị"
                     android:textColor="@color/design_default_color_primary"
-                    android:textSize="12sp"
+                    android:textSize="14sp"
                     app:icon="@drawable/ic_add"
                     app:iconTint="@color/design_default_color_primary" />
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- 5. CARD 5: QUẢN LÝ DUB BẮT MẮT (Multi-Audio Tracks Admin) -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="#1B1B28"
-            app:cardCornerRadius="10dp"
-            app:cardElevation="2dp"
-            app:strokeColor="#2E2E42"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <TextView
-                    android:id="@+id/tvAudioTracksSummary"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="6dp"
-                    android:textColor="#F2F2F7"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    tools:text="🎙️ Luồng lồng tiếng (Dub): Tiếng Việt, English, Japanese" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnManageAudioTracks"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="🎙️ Quản Lý Luồng Lồng Tiếng (Dubbing)"
-                    android:textColor="#3700B3"
-                    android:textSize="12sp"
-                    app:strokeColor="#3700B3" />
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- 6. CARD 6: QUẢN LÝ SUB BẮT MẮT (Multi-Subtitles CC Admin) -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardBackgroundColor="#1B1B28"
-            app:cardCornerRadius="10dp"
-            app:cardElevation="2dp"
-            app:strokeColor="#2E2E42"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <TextView
-                    android:id="@+id/tvSubtitlesSummary"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="6dp"
-                    android:textColor="#F2F2F7"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    tools:text="💬 Phụ đề rời CC: Tiếng Việt (.vtt), English (.vtt)" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnManageSubtitles"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="💬 Quản Lý Phụ Đề Rời (Subtitles CC)"
-                    android:textColor="#E50914"
-                    android:textSize="12sp"
-                    app:strokeColor="#E50914" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -409,10 +336,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            app:cardBackgroundColor="#1B1B28"
+            app:cardBackgroundColor="?attr/colorSurface"
             app:cardCornerRadius="10dp"
             app:cardElevation="2dp"
-            app:strokeColor="#2E2E42"
+            app:strokeColor="?attr/colorOutline"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -426,7 +353,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
                     android:text="🖼️ Ảnh Bìa / Poster Phim (PNG / JPG)"
-                    android:textColor="#F2F2F7"
+                    android:textColor="?android:attr/textColorPrimary"
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
@@ -451,9 +378,9 @@
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="🖼️ Chọn &amp; Upload Ảnh từ máy"
+                    android:text="Tải ảnh từ thiết bị"
                     android:textColor="@color/design_default_color_primary"
-                    android:textSize="12sp"
+                    android:textSize="14sp"
                     app:icon="@drawable/ic_add"
                     app:iconTint="@color/design_default_color_primary" />
 

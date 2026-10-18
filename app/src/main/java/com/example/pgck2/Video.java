@@ -3,8 +3,6 @@ package com.example.pgck2;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Model class đại diện cho một video/bộ phim trong ứng dụng.
@@ -255,18 +253,6 @@ public class Video {
     }
 
     public String getYouTubeVideoId() {
-        if (videoUrl == null || videoUrl.trim().isEmpty()) {
-            return null;
-        }
-        String pattern = "(?<=watch\\?v=|/videos/|embed/|youtu\\.be/|/v/|/e/|watch\\?node=|\\?v=)[^#&?\\n]*";
-        Pattern compiledPattern = Pattern.compile(pattern);
-        Matcher matcher = compiledPattern.matcher(videoUrl);
-        if (matcher.find()) {
-            return matcher.group();
-        }
-        if (videoUrl.matches("^[a-zA-Z0-9_-]{11}$")) {
-            return videoUrl;
-        }
-        return null;
+        return YouTubeUrls.videoId(videoUrl);
     }
 }

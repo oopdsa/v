@@ -108,10 +108,12 @@ public class MainActivity extends AppCompatActivity {
     // Launchers chọn Video và Ảnh
     private ActivityResultLauncher<String> videoPickerLauncher;
     private ActivityResultLauncher<String> imagePickerLauncher;
+    private ActivityResultLauncher<String> audioPickerLauncher;
     private ProgressDialog progressDialog;
 
     private EditText currentEtVideoUrl;
     private EditText currentEtThumbnailUrl;
+    private EditText currentEtAudioUrl;
 
     private final Handler sliderHandler = new Handler(Looper.getMainLooper());
     private final Runnable sliderRunnable = new Runnable() {
@@ -139,10 +141,30 @@ public class MainActivity extends AppCompatActivity {
         progressDialog = new ProgressDialog(this);
         progressDialog.setCancelable(false);
 
+        audioPickerLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+            if (uri == null || currentEtAudioUrl == null) return;
+            EditText target = currentEtAudioUrl;
+            progressDialog.setMessage("Đang tải âm thanh lên Cloudinary...");
+            progressDialog.show();
+            CloudinaryUploader.uploadAudio(this, uri, new CloudinaryUploader.UploadCallback() {
+                @Override public void onSuccess(String url) {
+                    if (isFinishing() || isDestroyed()) return;
+                    progressDialog.dismiss();
+                    target.setText(url);
+                }
+                @Override public void onError(String message) {
+                    if (isFinishing() || isDestroyed()) return;
+                    progressDialog.dismiss();
+                    Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+
         videoPickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 uri -> {
                     if (uri != null) {
+                        EditText target = currentEtVideoUrl;
                         progressDialog.setMessage("Đang tải video lên đám mây, vui lòng chờ...");
                         progressDialog.show();
                         CloudinaryUploader.uploadMedia(this, uri, true, new CloudinaryUploader.UploadCallback() {
@@ -150,8 +172,8 @@ public class MainActivity extends AppCompatActivity {
                             public void onSuccess(String secureUrl) {
                                 progressDialog.dismiss();
                                 Toast.makeText(MainActivity.this, "Tải video thành công!", Toast.LENGTH_SHORT).show();
-                                if (currentEtVideoUrl != null) {
-                                    currentEtVideoUrl.setText(secureUrl);
+                                if (target != null) {
+                                    target.setText(secureUrl);
                                 }
                             }
 
@@ -793,10 +815,10 @@ public class MainActivity extends AppCompatActivity {
         Button btnPickVideo = dialogView.findViewById(R.id.btnPickVideo);
         Button btnPickImage = dialogView.findViewById(R.id.btnPickImage);
 
-        Button btnManageAudioTracks = dialogView.findViewById(R.id.btnManageAudioTracks);
-        TextView tvAudioTracksSummary = dialogView.findViewById(R.id.tvAudioTracksSummary);
-        Button btnManageSubtitles = dialogView.findViewById(R.id.btnManageSubtitles);
-        TextView tvSubtitlesSummary = dialogView.findViewById(R.id.tvSubtitlesSummary);
+
+
+
+
 
         List<String> tempSelectedGenres = new ArrayList<>();
         List<AudioTrackOption> tempAudioTracks = new ArrayList<>();
@@ -805,7 +827,7 @@ public class MainActivity extends AppCompatActivity {
 
         boolean isEditMode = (videoToEdit != null);
         if (isEditMode) {
-            tvDialogTitle.setText("Sửa Thông Tin Video");
+            tvDialogTitle.setText("Sửa thông tin phim");
             etTitle.setText(videoToEdit.getTitle());
             etDescription.setText(videoToEdit.getDescription());
             if (etYear != null) etYear.setText(videoToEdit.getReleaseYear());
@@ -823,15 +845,21 @@ public class MainActivity extends AppCompatActivity {
             if (videoToEdit.getGenres() != null) tempSelectedGenres.addAll(videoToEdit.getGenres());
             if (videoToEdit.getAudioTracks() != null) tempAudioTracks.addAll(videoToEdit.getAudioTracks());
             if (videoToEdit.getSubtitleTracks() != null) tempSubtitleTracks.addAll(videoToEdit.getSubtitleTracks());
-            if (videoToEdit.getEpisodes() != null) tempEpisodes.addAll(videoToEdit.getEpisodes());
+            if (videoToEdit.getEpisodes() != null) for (Episode original : videoToEdit.getEpisodes()) {
+                Episode copy = new Episode(original.getEpisodeNumber(), original.getTitle(), original.getVideoUrl());
+                copy.setSortOrder(original.getSortOrder());
+                copy.setAudioTracks(new ArrayList<>(original.getAudioTracks()));
+                copy.setSubtitleTracks(new ArrayList<>(original.getSubtitleTracks()));
+                tempEpisodes.add(copy);
+            }
         } else {
-            tvDialogTitle.setText("Thêm Video Mới (Firebase)");
+            tvDialogTitle.setText("Thêm phim");
             cbIsPopular.setChecked(false);
         }
 
         updateSelectedGenresText(tvSelectedGenres, tempSelectedGenres);
-        updateAudioTracksSummaryText(tvAudioTracksSummary, tempAudioTracks);
-        updateSubtitlesSummaryText(tvSubtitlesSummary, tempSubtitleTracks);
+
+
         updateEpisodesSummaryText(tvEpisodesSummary, tempEpisodes);
 
         btnSelectGenres.setOnClickListener(v -> {
@@ -865,14 +893,6 @@ public class MainActivity extends AppCompatActivity {
             btnManageEpisodes.setOnClickListener(v -> showAdminManageEpisodesDialog(tvEpisodesSummary, tempEpisodes));
         }
 
-        if (btnManageAudioTracks != null) {
-            btnManageAudioTracks.setOnClickListener(v -> showAdminManageAudioTracksDialog(tvAudioTracksSummary, tempAudioTracks));
-        }
-
-        if (btnManageSubtitles != null) {
-            btnManageSubtitles.setOnClickListener(v -> showAdminManageSubtitlesDialog(tvSubtitlesSummary, tempSubtitleTracks));
-        }
-
         btnPickVideo.setOnClickListener(v -> {
             currentEtVideoUrl = etVideoUrl;
             videoPickerLauncher.launch("video/*");
@@ -883,7 +903,11 @@ public class MainActivity extends AppCompatActivity {
             imagePickerLauncher.launch("image/*");
         });
 
-        builder.setPositiveButton(isEditMode ? "Cập Nhật" : "Thêm Mới", (dialog, which) -> {
+        builder.setPositiveButton(isEditMode ? "Lưu thay đổi" : "Thêm phim", null);
+        builder.setNegativeButton("Hủy", null);
+        AlertDialog editDialog = builder.create();
+        editDialog.show();
+        editDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String title = etTitle.getText().toString().trim();
             String description = etDescription.getText().toString().trim();
             String year = etYear != null ? etYear.getText().toString().trim() : "2024";
@@ -893,8 +917,9 @@ public class MainActivity extends AppCompatActivity {
             String videoUrl = etVideoUrl.getText().toString().trim();
             String thumbnailUrl = etThumbnailUrl.getText().toString().trim();
 
-            if (title.isEmpty() || videoUrl.isEmpty()) {
-                Toast.makeText(this, "Vui lòng nhập đầy đủ Tiêu đề và URL Video!", Toast.LENGTH_SHORT).show();
+            if (title.isEmpty()) {
+                etTitle.setError("Nhập tên phim");
+                etTitle.requestFocus();
                 return;
             }
 
@@ -933,10 +958,10 @@ public class MainActivity extends AppCompatActivity {
                         .addOnSuccessListener(aVoid -> Toast.makeText(this, "Đã lưu lên Firebase thành công!", Toast.LENGTH_SHORT).show())
                         .addOnFailureListener(e -> Log.e(TAG, "Lỗi đồng bộ Firebase", e));
             }
+            editDialog.dismiss();
         });
 
-        builder.setNegativeButton("Hủy", (dialog, which) -> dialog.dismiss());
-        builder.create().show();
+
     }
 
     private void updateSelectedGenresText(TextView tv, List<String> list) {
@@ -996,22 +1021,26 @@ public class MainActivity extends AppCompatActivity {
 
     private void showAdminManageEpisodesDialog(TextView tvSummary, List<Episode> tempEpisodes) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("📺 Quản Lý Các Tập Phim (Episodes)");
+        builder.setTitle("Tập phim");
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(32, 16, 32, 16);
+        int padding = (int) (20 * getResources().getDisplayMetrics().density);
+        layout.setPadding(padding, padding / 2, padding, padding / 2);
 
         Button btnAddNew = new Button(this);
-        btnAddNew.setText("➕ Thêm Tập Phim Mới");
+        btnAddNew.setText("Thêm tập phim");
         layout.addView(btnAddNew);
 
         TextView tvHeader = new TextView(this);
-        tvHeader.setText("\nDanh sách tập phim hiện có (Bấm Sửa / Xóa):");
+        tvHeader.setText(tempEpisodes.isEmpty() ? "Chưa có tập phim. Thêm tập để bật nút Xem."
+                : "Tập đầu danh sách sẽ mở khi bấm Xem. Bấm Thứ tự để sắp xếp; lưu phim để áp dụng.");
         tvHeader.setTypeface(null, Typeface.BOLD);
         layout.addView(tvHeader);
 
-        builder.setView(layout);
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.addView(layout);
+        builder.setView(scroll);
         AlertDialog dialog = builder.setNegativeButton("Đóng", null).create();
 
         btnAddNew.setOnClickListener(v -> {
@@ -1022,21 +1051,42 @@ public class MainActivity extends AppCompatActivity {
             });
         });
 
+        List<Episode> ordered = EpisodePlayback.ordered(tempEpisodes);
+        tempEpisodes.clear();
+        tempEpisodes.addAll(ordered);
         for (Episode ep : tempEpisodes) {
             LinearLayout itemRow = new LinearLayout(this);
-            itemRow.setOrientation(LinearLayout.HORIZONTAL);
+            itemRow.setOrientation(LinearLayout.VERTICAL);
             itemRow.setPadding(0, 8, 0, 8);
 
             TextView tvEpName = new TextView(this);
-            tvEpName.setText(ep.getTitle());
+            tvEpName.setText("Tập " + ep.getEpisodeNumber() + " · " + ep.getTitle()
+                    + "\n" + ep.getSubtitleTracks().size() + " phụ đề · " + ep.getAudioTracks().size() + " lồng tiếng");
             tvEpName.setTextSize(14);
             tvEpName.setTypeface(null, Typeface.BOLD);
-            LinearLayout.LayoutParams lpText = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            LinearLayout.LayoutParams lpText = new LinearLayout.LayoutParams(-1, -2);
             tvEpName.setLayoutParams(lpText);
             itemRow.addView(tvEpName);
+            LinearLayout actions = new LinearLayout(this);
+            actions.setOrientation(LinearLayout.HORIZONTAL);
+            itemRow.addView(actions);
+            Button btnOrder = new Button(this);
+            btnOrder.setText("Thứ tự");
+            btnOrder.setOnClickListener(v -> {
+                int index = tempEpisodes.indexOf(ep);
+                new AlertDialog.Builder(this).setTitle(ep.getTitle())
+                        .setItems(new String[]{"Đưa lên đầu", "Di chuyển lên", "Di chuyển xuống"}, (orderDialog, which) -> {
+                            int to = which == 0 ? 0 : which == 1 ? index - 1 : index + 1;
+                            EpisodePlayback.move(tempEpisodes, index, to);
+                            updateEpisodesSummaryText(tvSummary, tempEpisodes);
+                            dialog.dismiss();
+                            showAdminManageEpisodesDialog(tvSummary, tempEpisodes);
+                        }).show();
+            });
+            actions.addView(btnOrder, new LinearLayout.LayoutParams(0, -2, 1));
 
             Button btnEdit = new Button(this);
-            btnEdit.setText("✏️ Sửa");
+            btnEdit.setText("Sửa");
             btnEdit.setOnClickListener(v -> {
                 dialog.dismiss();
                 showAddEditEpisodeDialog(ep, tempEpisodes, () -> {
@@ -1044,10 +1094,10 @@ public class MainActivity extends AppCompatActivity {
                     showAdminManageEpisodesDialog(tvSummary, tempEpisodes);
                 });
             });
-            itemRow.addView(btnEdit);
+            actions.addView(btnEdit, new LinearLayout.LayoutParams(0, -2, 1));
 
             Button btnDelete = new Button(this);
-            btnDelete.setText("🗑️ Xóa");
+            btnDelete.setText("Xóa");
             btnDelete.setTextColor(Color.RED);
             btnDelete.setOnClickListener(v -> {
                 tempEpisodes.remove(ep);
@@ -1056,7 +1106,7 @@ public class MainActivity extends AppCompatActivity {
                 dialog.dismiss();
                 showAdminManageEpisodesDialog(tvSummary, tempEpisodes);
             });
-            itemRow.addView(btnDelete);
+            actions.addView(btnDelete, new LinearLayout.LayoutParams(0, -2, 1));
 
             layout.addView(itemRow);
         }
@@ -1064,29 +1114,42 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    private void addEpisodeField(LinearLayout layout, EditText input, String label) {
+        com.google.android.material.textfield.TextInputLayout field =
+                new com.google.android.material.textfield.TextInputLayout(this);
+        field.setHint(label);
+        field.setBoxBackgroundMode(com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE);
+        input.setHint(null);
+        field.addView(input, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = (int) (12 * getResources().getDisplayMetrics().density);
+        layout.addView(field, params);
+    }
     private void showAddEditEpisodeDialog(Episode epToEdit, List<Episode> tempEpisodes, Runnable onUpdated) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(epToEdit != null ? "✏️ Sửa Tập Phim" : "➕ Thêm Tập Phim Mới");
+        builder.setTitle(epToEdit != null ? "Sửa tập phim" : "Thêm tập phim");
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(32, 16, 32, 16);
+        int padding = (int) (20 * getResources().getDisplayMetrics().density);
+        layout.setPadding(padding, padding / 2, padding, padding / 2);
 
         EditText etNumber = new EditText(this);
         etNumber.setHint("Số tập (vd: 1, 2, 3)");
         etNumber.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        layout.addView(etNumber);
+        addEpisodeField(layout, etNumber, "Số tập");
 
         EditText etTitle = new EditText(this);
         etTitle.setHint("Tên tập phim (vd: Tập 1: Khởi đầu)");
-        layout.addView(etTitle);
+        addEpisodeField(layout, etTitle, "Tên tập");
 
         EditText etUrl = new EditText(this);
         etUrl.setHint("URL Video tập này (.mp4 / .m3u8 / YouTube)");
-        layout.addView(etUrl);
+        etUrl.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        addEpisodeField(layout, etUrl, "URL video của tập");
 
         Button btnPickVideo = new Button(this);
-        btnPickVideo.setText("📁 Upload Video Cho Tập Này");
+        btnPickVideo.setText("Tải video từ thiết bị");
         btnPickVideo.setOnClickListener(v -> {
             currentEtVideoUrl = etUrl;
             videoPickerLauncher.launch("video/*");
@@ -1098,7 +1161,7 @@ public class MainActivity extends AppCompatActivity {
         layout.addView(tvEpAudioSummary);
 
         Button btnManageEpAudio = new Button(this);
-        btnManageEpAudio.setText("🎙️ Quản Lý Dub Cho Tập Này");
+        btnManageEpAudio.setText("Lồng tiếng của tập");
         layout.addView(btnManageEpAudio);
 
         TextView tvEpSubSummary = new TextView(this);
@@ -1106,7 +1169,7 @@ public class MainActivity extends AppCompatActivity {
         layout.addView(tvEpSubSummary);
 
         Button btnManageEpSub = new Button(this);
-        btnManageEpSub.setText("💬 Quản Lý Sub CC Cho Tập Này");
+        btnManageEpSub.setText("Phụ đề của tập");
         layout.addView(btnManageEpSub);
 
         List<AudioTrackOption> epAudioTracks = new ArrayList<>();
@@ -1119,7 +1182,9 @@ public class MainActivity extends AppCompatActivity {
             if (epToEdit.getAudioTracks() != null) epAudioTracks.addAll(epToEdit.getAudioTracks());
             if (epToEdit.getSubtitleTracks() != null) epSubtitleTracks.addAll(epToEdit.getSubtitleTracks());
         } else {
-            etNumber.setText(String.valueOf(tempEpisodes.size() + 1));
+            int nextNumber = 1;
+            for (Episode existing : tempEpisodes) nextNumber = Math.max(nextNumber, existing.getEpisodeNumber() + 1);
+            etNumber.setText(String.valueOf(nextNumber));
         }
 
         updateAudioTracksSummaryText(tvEpAudioSummary, epAudioTracks);
@@ -1128,19 +1193,33 @@ public class MainActivity extends AppCompatActivity {
         btnManageEpAudio.setOnClickListener(v -> showAdminManageAudioTracksDialog(tvEpAudioSummary, epAudioTracks));
         btnManageEpSub.setOnClickListener(v -> showAdminManageSubtitlesDialog(tvEpSubSummary, epSubtitleTracks));
 
-        builder.setView(layout);
-        builder.setPositiveButton(epToEdit != null ? "Cập Nhật Tập" : "Lưu Tập Mới", (dialog, which) -> {
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.addView(layout);
+        builder.setView(scroll);
+        builder.setPositiveButton("Lưu tập", null);
+        builder.setNegativeButton("Hủy", null);
+        AlertDialog episodeDialog = builder.create();
+        episodeDialog.show();
+        episodeDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String numStr = etNumber.getText().toString().trim();
             String title = etTitle.getText().toString().trim();
             String url = etUrl.getText().toString().trim();
 
-            int epNum = 1;
+            int epNum;
             try {
                 epNum = Integer.parseInt(numStr);
-            } catch (Exception ignored) {}
+            } catch (NumberFormatException error) {
+                etNumber.setError("Nhập số tập hợp lệ"); return;
+            }
+            if (epNum < 1) { etNumber.setError("Số tập phải lớn hơn 0"); return; }
+            for (Episode existing : tempEpisodes) {
+                if (existing != epToEdit && existing.getEpisodeNumber() == epNum) {
+                    etNumber.setError("Số tập đã tồn tại"); return;
+                }
+            }
 
-            if (url.isEmpty()) {
-                Toast.makeText(this, "Vui lòng nhập URL video cho tập phim!", Toast.LENGTH_SHORT).show();
+            if (!url.matches("(?i)^https?://[^\\s]+$")) {
+                etUrl.setError("Nhập URL video http hoặc https hợp lệ");
                 return;
             }
 
@@ -1154,14 +1233,18 @@ public class MainActivity extends AppCompatActivity {
                 Episode newEp = new Episode(epNum, title.isEmpty() ? "Tập " + epNum : title, url);
                 newEp.setAudioTracks(new ArrayList<>(epAudioTracks));
                 newEp.setSubtitleTracks(new ArrayList<>(epSubtitleTracks));
+                int nextOrder = 0;
+                for (Episode existing : tempEpisodes) nextOrder = Math.max(nextOrder,
+                        (existing.getSortOrder() != null ? existing.getSortOrder() : existing.getEpisodeNumber()) + 1);
+                newEp.setSortOrder(nextOrder);
                 tempEpisodes.add(newEp);
             }
 
+            episodeDialog.dismiss();
             if (onUpdated != null) onUpdated.run();
         });
 
-        builder.setNegativeButton("Hủy", null);
-        builder.show();
+
     }
 
     private void showAdminManageAudioTracksDialog(TextView tvSummary, List<AudioTrackOption> tempAudioTracks) {
@@ -1183,7 +1266,19 @@ public class MainActivity extends AppCompatActivity {
 
         EditText etUrl = new EditText(this);
         etUrl.setHint("URL luồng video/audio lồng tiếng thay thế (nếu có)");
+        etUrl.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
         layout.addView(etUrl);
+
+        Button btnUploadAudio = new Button(this);
+        btnUploadAudio.setText("Chọn file âm thanh từ thiết bị");
+        btnUploadAudio.setOnClickListener(v -> {
+            currentEtAudioUrl = etUrl;
+            audioPickerLauncher.launch("audio/*");
+        });
+        layout.addView(btnUploadAudio);
+        TextView uploadHint = new TextView(this);
+        uploadHint.setText("Nhập link trực tiếp hoặc chọn file. File sẽ được tải lên Cloudinary và điền URL vào ô trên.");
+        layout.addView(uploadHint);
 
         Button btnAdd = new Button(this);
         btnAdd.setText("➕ Thêm Luồng Lồng Tiếng");
@@ -1194,7 +1289,9 @@ public class MainActivity extends AppCompatActivity {
         tvHeader.setTypeface(null, Typeface.BOLD);
         layout.addView(tvHeader);
 
-        builder.setView(layout);
+        android.widget.ScrollView audioScroll = new android.widget.ScrollView(this);
+        audioScroll.addView(layout);
+        builder.setView(audioScroll);
         AlertDialog dialog = builder.setNegativeButton("Đóng", null).create();
 
         btnAdd.setOnClickListener(v -> {
@@ -1207,6 +1304,16 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
+            if (!url.matches("(?i)^https?://[^\\s]+$")) {
+                etUrl.setError("Nhập link âm thanh hoặc chọn file từ thiết bị");
+                return;
+            }
+            for (AudioTrackOption track : tempAudioTracks) {
+                if (url.equals(MediaTracks.clean(track.getUrl()))) {
+                    etUrl.setError("Luồng âm thanh này đã có trong tập");
+                    return;
+                }
+            }
             tempAudioTracks.add(new AudioTrackOption(name, lang.isEmpty() ? "en" : lang, url));
             updateAudioTracksSummaryText(tvSummary, tempAudioTracks);
             Toast.makeText(this, "Đã thêm luồng: " + name, Toast.LENGTH_SHORT).show();
@@ -1276,6 +1383,16 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
+            if (!url.matches("(?i)^https?://[^\\s]+$")) {
+                etUrl.setError("Nhập URL phụ đề hợp lệ");
+                return;
+            }
+            for (SubtitleOption track : tempSubtitleTracks) {
+                if (url.equals(MediaTracks.clean(track.getSubtitleUrl()))) {
+                    etUrl.setError("File phụ đề này đã có trong tập");
+                    return;
+                }
+            }
             tempSubtitleTracks.add(new SubtitleOption(name, lang.isEmpty() ? "vi" : lang, url));
             updateSubtitlesSummaryText(tvSummary, tempSubtitleTracks);
             Toast.makeText(this, "Đã thêm phụ đề: " + name, Toast.LENGTH_SHORT).show();

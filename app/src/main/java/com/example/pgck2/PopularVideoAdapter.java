@@ -62,50 +62,19 @@ public class PopularVideoAdapter extends RecyclerView.Adapter<PopularVideoAdapte
                 .error(android.R.drawable.ic_dialog_alert)
                 .into(holder.imgPopularBanner);
 
-        // Sự kiện click nút Watch Now hoặc toàn bộ slider
-        View.OnClickListener clickListener = v -> {
-            ArrayList<String> audioNames = new ArrayList<>();
-            ArrayList<String> audioLangs = new ArrayList<>();
-            ArrayList<String> audioUrls = new ArrayList<>();
-
-            if (video.getAudioTracks() != null) {
-                for (AudioTrackOption audio : video.getAudioTracks()) {
-                    audioNames.add(audio.getName());
-                    audioLangs.add(audio.getLanguage());
-                    audioUrls.add(audio.getUrl());
-                }
+        Episode first = EpisodePlayback.firstEpisode(video.getEpisodes());
+        holder.btnWatchNow.setText(first == null ? "Chưa có tập phim" : "Xem tập " + first.getEpisodeNumber());
+        holder.btnWatchNow.setEnabled(first != null);
+        holder.btnWatchNow.setOnClickListener(v -> {
+            if (first != null) context.startActivity(PlaybackIntents.episode(context, video, first));
+        });
+        holder.itemView.setOnClickListener(v -> {
+            if (context instanceof androidx.fragment.app.FragmentActivity) {
+                new MovieDetailBottomSheetDialog(video).show(
+                        ((androidx.fragment.app.FragmentActivity) context).getSupportFragmentManager(), "movie_detail");
             }
-
-            ArrayList<String> subNames = new ArrayList<>();
-            ArrayList<String> subLangs = new ArrayList<>();
-            ArrayList<String> subUrls = new ArrayList<>();
-
-            if (video.getSubtitleTracks() != null) {
-                for (SubtitleOption sub : video.getSubtitleTracks()) {
-                    subNames.add(sub.getName());
-                    subLangs.add(sub.getLanguage());
-                    subUrls.add(sub.getSubtitleUrl());
-                }
-            }
-
-            Intent intent = new Intent(context, PlayerActivity.class);
-            intent.putExtra(PlayerActivity.EXTRA_VIDEO_URL, video.getVideoUrl());
-            intent.putExtra(PlayerActivity.EXTRA_VIDEO_TITLE, video.getTitle());
-            intent.putExtra(PlayerActivity.EXTRA_VIDEO_DESC, video.getDescription());
-            intent.putExtra("extra_video_genres", video.getGenresString());
-            intent.putStringArrayListExtra("extra_audio_names", audioNames);
-            intent.putStringArrayListExtra("extra_audio_langs", audioLangs);
-            intent.putStringArrayListExtra("extra_audio_urls", audioUrls);
-            intent.putStringArrayListExtra("extra_sub_names", subNames);
-            intent.putStringArrayListExtra("extra_sub_langs", subLangs);
-            intent.putStringArrayListExtra("extra_sub_urls", subUrls);
-            context.startActivity(intent);
-        };
-
-        holder.btnWatchNow.setOnClickListener(clickListener);
-        holder.itemView.setOnClickListener(clickListener);
+        });
     }
-
     @Override
     public int getItemCount() {
         return videoList != null ? videoList.size() : 0;

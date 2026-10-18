@@ -10,6 +10,7 @@ public class Episode {
     private int episodeNumber;                   // Số tập (vd: 1, 2, 3)
     private String title;                        // Tên tập phim (vd: Tập 1: Khởi đầu)
     private String videoUrl;                     // Đường dẫn URL video của tập này
+    private Integer sortOrder;                   // null for older records; fall back to episode number
     private List<AudioTrackOption> audioTracks;  // Danh sách luồng âm thanh lồng tiếng riêng cho tập
     private List<SubtitleOption> subtitleTracks; // Danh sách phụ đề rời CC riêng cho tập
 
@@ -45,6 +46,10 @@ public class Episode {
     public String getVideoUrl() {
         return videoUrl;
     }
+
+    public Integer getSortOrder() { return sortOrder; }
+
+    public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
 
     public void setVideoUrl(String videoUrl) {
         this.videoUrl = videoUrl;

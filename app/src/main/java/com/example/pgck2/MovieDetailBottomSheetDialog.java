@@ -39,7 +39,7 @@ import java.util.List;
  * BottomSheetDialogFragment hiển thị Chi Tiết Phim chuẩn Netflix Style:
  * - Cho phép vuốt kéo lên/xuống để xem toàn bộ thông tin phim (Draggable Sheet).
  * - Tự động phát Trailer Preview (chỉ tự chạy lặp lại, không cho người dùng bấm can thiệp).
- * - Nút "▶ Phát" tự động mở tập mới nhất vừa được thêm gần đây.
+ * - Nút "▶ Phát" mở tập đầu tiên theo số tập.
  * - Danh sách nút bấm Chọn Tập Phim (Tập 1, Tập 2, Tập 3...).
  */
 public class MovieDetailBottomSheetDialog extends BottomSheetDialogFragment {
@@ -62,6 +62,7 @@ public class MovieDetailBottomSheetDialog extends BottomSheetDialogFragment {
     @Override
     public void onStart() {
         super.onStart();
+        if (wvYouTubePreview != null) wvYouTubePreview.onResume();
         BottomSheetDialog dialog = (BottomSheetDialog) getDialog();
         if (dialog != null) {
             View bottomSheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
@@ -96,11 +97,6 @@ public class MovieDetailBottomSheetDialog extends BottomSheetDialogFragment {
         View btnRate = view.findViewById(R.id.btnRate);
         View btnShare = view.findViewById(R.id.btnShare);
 
-        // Ngăn chặn sự kiện chạm bấm trực tiếp lên khung Preview (Chỉ cho phép chạy tự động)
-        if (framePlayerPreview != null) {
-            framePlayerPreview.setOnTouchListener((v, event) -> true);
-        }
-
         // 1. Cập nhật thông tin tiêu đề và năm phát hành
         if (video != null) {
             tvDetailTitle.setText(video.getTitle());
@@ -111,7 +107,7 @@ public class MovieDetailBottomSheetDialog extends BottomSheetDialogFragment {
             if (episodes != null && !episodes.isEmpty()) {
                 tvSeasonsOrEpisodes.setText(episodes.size() + " Tập");
             } else {
-                tvSeasonsOrEpisodes.setText("Phim Lẻ / HD");
+                tvSeasonsOrEpisodes.setText("Chưa có tập phim");
             }
 
             // 2. Tạo danh sách Nút Chọn Tập Phim (Tập 1, Tập 2, Tập 3...)
@@ -121,17 +117,16 @@ public class MovieDetailBottomSheetDialog extends BottomSheetDialogFragment {
             setupTrailerPreview(view.getContext());
         }
 
-        // 4. Sự kiện bấm Nút Phát Phim -> Tự động phát Tập Mới Nhất vừa được thêm!
+        Episode first = EpisodePlayback.firstEpisode(video.getEpisodes());
+        btnPlayMovie.setText(first == null ? "Chưa có tập phim" : "Xem tập " + first.getEpisodeNumber());
+        btnPlayMovie.setEnabled(first != null);
         btnPlayMovie.setOnClickListener(v -> {
-            dismiss();
-            Episode latestEpisode = null;
-            if (video != null && video.getEpisodes() != null && !video.getEpisodes().isEmpty()) {
-                // Lấy tập phim mới nhất (Tập cuối cùng trong danh sách)
-                latestEpisode = video.getEpisodes().get(video.getEpisodes().size() - 1);
-            }
-            playEpisodeOrMovie(view.getContext(), latestEpisode);
+            if (first != null) playEpisodeOrMovie(view.getContext(), first);
         });
-
+        MaterialButton btnTrailer = view.findViewById(R.id.btnWatchTrailer);
+        btnTrailer.setVisibility(video.getVideoUrl() == null || video.getVideoUrl().trim().isEmpty()
+                ? View.GONE : View.VISIBLE);
+        btnTrailer.setOnClickListener(v -> playEpisodeOrMovie(view.getContext(), null));
         // Nút Đóng modal
         btnCloseDetail.setOnClickListener(v -> dismiss());
 
@@ -160,9 +155,10 @@ public class MovieDetailBottomSheetDialog extends BottomSheetDialogFragment {
 
         if (layoutSection != null) layoutSection.setVisibility(View.VISIBLE);
 
-        for (Episode ep : episodes) {
+        List<Episode> sorted = EpisodePlayback.ordered(episodes);
+        for (Episode ep : sorted) {
             MaterialButton btnEp = new MaterialButton(context, null, com.google.android.material.R.attr.materialButtonStyle);
-            btnEp.setText(ep.getTitle());
+            btnEp.setText("Tập " + ep.getEpisodeNumber() + " · " + ep.getTitle());
             btnEp.setBackgroundTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#2A2A38")));
             btnEp.setTextColor(android.graphics.Color.WHITE);
             btnEp.setTextSize(13);
@@ -199,61 +195,11 @@ public class MovieDetailBottomSheetDialog extends BottomSheetDialogFragment {
         }
         if (video == null) return;
 
-        String targetUrl = video.getVideoUrl();
-        String targetTitle = video.getTitle();
-
-        List<AudioTrackOption> audioList = video.getAudioTracks();
-        List<SubtitleOption> subList = video.getSubtitleTracks();
-
-        if (selectedEpisode != null) {
-            targetUrl = selectedEpisode.getVideoUrl();
-            targetTitle = video.getTitle() + " - " + selectedEpisode.getTitle();
-            if (selectedEpisode.getAudioTracks() != null && !selectedEpisode.getAudioTracks().isEmpty()) {
-                audioList = selectedEpisode.getAudioTracks();
-            }
-            if (selectedEpisode.getSubtitleTracks() != null && !selectedEpisode.getSubtitleTracks().isEmpty()) {
-                subList = selectedEpisode.getSubtitleTracks();
-            }
-        }
-
-        ArrayList<String> audioNames = new ArrayList<>();
-        ArrayList<String> audioLangs = new ArrayList<>();
-        ArrayList<String> audioUrls = new ArrayList<>();
-
-        if (audioList != null) {
-            for (AudioTrackOption audio : audioList) {
-                audioNames.add(audio.getName());
-                audioLangs.add(audio.getLanguage());
-                audioUrls.add(audio.getUrl());
-            }
-        }
-
-        ArrayList<String> subNames = new ArrayList<>();
-        ArrayList<String> subLangs = new ArrayList<>();
-        ArrayList<String> subUrls = new ArrayList<>();
-
-        if (subList != null) {
-            for (SubtitleOption sub : subList) {
-                subNames.add(sub.getName());
-                subLangs.add(sub.getLanguage());
-                subUrls.add(sub.getSubtitleUrl());
-            }
-        }
-
-        Intent intent = new Intent(context, PlayerActivity.class);
-        intent.putExtra(PlayerActivity.EXTRA_VIDEO_URL, targetUrl);
-        intent.putExtra(PlayerActivity.EXTRA_VIDEO_TITLE, targetTitle);
-        intent.putExtra(PlayerActivity.EXTRA_VIDEO_DESC, video.getDescription());
-        intent.putExtra("extra_video_genres", video.getGenresString());
-        intent.putStringArrayListExtra("extra_audio_names", audioNames);
-        intent.putStringArrayListExtra("extra_audio_langs", audioLangs);
-        intent.putStringArrayListExtra("extra_audio_urls", audioUrls);
-        intent.putStringArrayListExtra("extra_sub_names", subNames);
-        intent.putStringArrayListExtra("extra_sub_langs", subLangs);
-        intent.putStringArrayListExtra("extra_sub_urls", subUrls);
-        context.startActivity(intent);
+        context.startActivity(selectedEpisode == null
+                ? PlaybackIntents.trailer(context, video)
+                : PlaybackIntents.episode(context, video, selectedEpisode));
+        dismiss();
     }
-
     /**
      * Tự động phát Trailer Preview ở ô xem trước.
      */
@@ -265,22 +211,12 @@ public class MovieDetailBottomSheetDialog extends BottomSheetDialogFragment {
             playerViewPreview.setVisibility(View.GONE);
             wvYouTubePreview.setVisibility(View.VISIBLE);
 
-            WebSettings webSettings = wvYouTubePreview.getSettings();
-            webSettings.setJavaScriptEnabled(true);
-            webSettings.setDomStorageEnabled(true);
-            webSettings.setMediaPlaybackRequiresUserGesture(false);
-
-            wvYouTubePreview.setWebViewClient(new WebViewClient());
-            wvYouTubePreview.setWebChromeClient(new WebChromeClient());
-
-            String iframeHtml = "<!DOCTYPE html><html><head>"
-                    + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
-                    + "<style>body{margin:0;padding:0;background-color:#000;display:flex;justify-content:center;align-items:center;height:100vh;}"
-                    + "iframe{width:100%;height:100%;border:none;pointer-events:none;}</style></head><body>"
-                    + "<iframe src=\"https://www.youtube.com/embed/" + video.getYouTubeVideoId() + "?autoplay=1&mute=1&playsinline=1\" allow=\"autoplay\" allowfullscreen></iframe>"
-                    + "</body></html>";
-
-            wvYouTubePreview.loadDataWithBaseURL("https://www.youtube.com", iframeHtml, "text/html", "utf-8", null);
+            YouTubeEmbed.load(wvYouTubePreview, video.getYouTubeVideoId(), true, new YouTubeEmbed.Listener() {
+                @Override public void onLoading(boolean loading) {}
+                @Override public void onError(String message) {
+                    if (isAdded()) Toast.makeText(context, message, Toast.LENGTH_LONG).show();
+                }
+            });
         } else {
             wvYouTubePreview.setVisibility(View.GONE);
             playerViewPreview.setVisibility(View.VISIBLE);
@@ -291,10 +227,20 @@ public class MovieDetailBottomSheetDialog extends BottomSheetDialogFragment {
             MediaItem mediaItem = MediaItem.fromUri(Uri.parse(video.getVideoUrl()));
             previewPlayer.setMediaItem(mediaItem);
             previewPlayer.setRepeatMode(Player.REPEAT_MODE_ONE);
-            previewPlayer.setVolume(0.5f);
+            previewPlayer.setVolume(0f);
             previewPlayer.prepare();
             previewPlayer.setPlayWhenReady(true);
         }
+    }
+
+    @Override
+    public void onStop() {
+        if (previewPlayer != null) previewPlayer.pause();
+        if (wvYouTubePreview != null) {
+            wvYouTubePreview.evaluateJavascript("if(window.player&&player.pauseVideo)player.pauseVideo();", null);
+            wvYouTubePreview.onPause();
+        }
+        super.onStop();
     }
 
     @Override
@@ -305,7 +251,8 @@ public class MovieDetailBottomSheetDialog extends BottomSheetDialogFragment {
             previewPlayer = null;
         }
         if (wvYouTubePreview != null) {
-            wvYouTubePreview.loadUrl("about:blank");
+            YouTubeEmbed.release(wvYouTubePreview);
+            wvYouTubePreview = null;
         }
     }
 }

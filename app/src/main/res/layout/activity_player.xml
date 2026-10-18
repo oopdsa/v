@@ -9,6 +9,29 @@
     tools:context=".PlayerActivity">
 
     <!-- 1. KHU VỰC PHÁT VIDEO CHUẨN YOUTUBE/NETFLIX (Chỉ hiện Controller khi User Tap vào màn hình) -->
+    <LinearLayout
+        android:id="@+id/webPlayerActions"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+        <Button android:id="@+id/btnWebBack" android:layout_width="wrap_content"
+            android:layout_height="48dp" android:text="Đóng" android:textAllCaps="false" />
+        <Space android:layout_width="0dp" android:layout_weight="1" android:layout_height="1dp" />
+        <ImageButton android:id="@+id/btnWebPip" android:layout_width="48dp"
+            android:layout_height="48dp" android:src="@drawable/ic_pip"
+            android:contentDescription="Thu nhỏ PiP" android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="12dp" app:tint="@android:color/white" />
+        <ImageButton android:id="@+id/btnWebFullscreen" android:layout_width="48dp"
+            android:layout_height="48dp" android:src="@drawable/ic_fullscreen"
+            android:contentDescription="Toàn màn hình" android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="12dp" app:tint="@android:color/white" />
+    </LinearLayout>
+
     <FrameLayout
         android:id="@+id/framePlayerContainer"
         android:layout_width="0dp"
@@ -17,7 +40,7 @@
         android:elevation="4dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/webPlayerActions">
 
         <!-- PlayerView Media3 sử dụng Controller Custom exo_playback_control_view (YouTube/Netflix Tap-to-Show) -->
         <androidx.media3.ui.PlayerView
@@ -51,20 +74,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="top"
-            android:background="@drawable/bg_gradient_bottom_up"
+            android:background="@drawable/bg_gradient_top_down"
             android:clickable="true"
             android:focusable="true"
             android:paddingHorizontal="8dp"
             android:paddingTop="10dp"
-            android:paddingBottom="18dp"
-            android:rotation="180">
+            android:paddingBottom="18dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:rotation="180">
+                android:orientation="horizontal">
 
                 <ImageButton
                     android:id="@+id/btnExitPlayer"
